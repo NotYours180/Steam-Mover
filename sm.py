@@ -3,11 +3,13 @@ import os
 import shutil
 import threading
 
-getreg = lambda f, x: re.findall('"%s"\s+"(.+)"' % x, f)[0]
+# ACF property extracting regular expression.
+acfgetreg = lambda f, x: re.findall('"%s"\s+"(.+)"' % x, f)[0]
 
 def dirsize(path):
+    '''Gets size of given directory.'''
     total = 0
-    for dirpath, n, files in os.walk(path):
+    for dirpath, dirs, files in os.walk(path):
         for file in files:
             file = os.path.join(dirpath, file)
             total += os.path.getsize(file)
@@ -27,59 +29,63 @@ def bytesize(num, binary=True):
     return "%.1f Y%sB" % (num, 'i'*(binary))
 
 def buildfolder(path):
-    '''Taking steamapps path, builds a list of games'''
+    '''Taking path to folder containing steamapps, returns stats and list of games.'''
     total, used, free = shutil.disk_usage(path)
     games = {}
     
     games_path = os.path.join(path, 'steamapps')
-    files = [x for x in os.listdir(games_path) if re.findall('appmanifest_\d+.acf', x)]
+    files = [x for x in os.listdir(games_path)
+             if re.findall('appmanifest_\d+.acf', x)] #List of valid ACF files.
     
     for acfname in files:
         acfpath = os.path.join(games_path, acfname)
         f = ''.join(open(acfpath).readlines())
         
-        gamepath = os.path.join(games_path, 'common', getreg(f, 'installdir'))
+        gamepath = os.path.join(games_path, 'common', acfgetreg(f, 'installdir'))
         size = dirsize(gamepath)
-        gameid = re.findall('appmanifest_(\d+).acf', acfname)[0]
-        name = getreg(f, 'name')
+        gameid = re.findall('appmanifest_(\d+).acf', acfname)[0] #First result = ID
+        name = acfgetreg(f, 'name')
 
         games[gameid] = {'name': name, 'size': size, 'path': gamepath, 'acfpath': acfpath, 'id': gameid}
 
     return {'path': path, 'capacity': total, 'free': free, 'used': used, 'games': games}
 
 
-class MoveOperation:
+class Operation:
     '''Folder copying operation w/ status. Does not attempt to see if free space is available.'''
 
-    def copy(self, src, dst):
+    def _copy(self, src, dst):
+        '''Copies SRC to DST, updates internal stats.'''
         relsrc = os.path.relpath(src, self.src) # Relative source path for display
         size = os.path.getsize(src) #Size of file to be copied
 
-        self.status_('Copying file %s' % relsrc)
+        self._status('Copying file %s' % relsrc)
         shutil.copy2(src, dst, follow_symlinks=False)
         self.copied += size
     
     def start(self):
-        self.status_('Scanning tree')
+        '''Starts operation.'''
+        self._status('Scanning tree')
         
         for dirpath, dirs, files in self.list:
             for d in dirs:
-                d = os.path.join(dirpath, d)
-                relpath = os.path.relpath(d, self.src)
-                newpath = os.path.join(self.dst, relpath)
+                d = os.path.join(dirpath, d) #Make absolute
+                relpath = os.path.relpath(d, self.src) #Get relative to top source
+                newpath = os.path.join(self.dst, relpath) #Get new destination folder
                 
                 if not os.path.exists(newpath):
-                    os.makedirs(newpath)
+                    os.makedirs(newpath) #Make directory if nonexistent
                     
             relpath = os.path.relpath(dirpath, self.src)
-            newpath = os.path.join(self.dst, relpath)
+            newpath = os.path.join(self.dst, relpath) #Get destination again
             
             for file in files:
-                file = os.path.realpath(os.path.join(dirpath, file))
+                file = os.path.realpath(os.path.join(dirpath, file)) #Make newpath
                 thread = threading.Thread(target=lambda: self.copy(file, newpath))
                 thread.run()
 
-    def status_(self, status):
+    def _status(self, status):
+        '''Runs callback with status and attempts to stop divison by zero errors.'''
         self.status = status
         if callable(self.callback):
             try:
@@ -103,39 +109,40 @@ class MoveOperation:
         self.size = dirsize(src) #Bytes to copy
         self.copied = 0 # Bytes copied
 
+
 def move(sender, game, library, delete=True, callback=lambda x,y:...):
     '''Moves game with ID `game` from library `sender` to `library`. If `delete` is true, deletes original copy.
     If callback is set, every operation done does callback(statusmsg, percentdone)'''
     
-    if library['path'] == sender['path']:
-        raise Exception('The libraries are identical.')
+    assert(library['path'] == sender['path'], 'The libraries are identical.')
     
     game = sender['games'][str(game)]
 
-    needed = game['size'] - library['free']
-    if needed > 0:
-        raise Exception('You need more space (%s) on the recipient drive to copy all of the game.' %
-                        bytesize(needed))
+    needed = game['size'] - library['free'] #Needed in destination drive to move. If below zero, can copy.
+    
+    assert(needed >= 0,
+           'You need more space (%s) on the recipient drive to copy all of the game.' % bytesize(needed))
 
     srcpath = game['path']
-    gamepath = os.path.basename(game['path'])
+    gamepath = os.path.basename(game['path']) # Name of folder
     dstpath = os.path.join(library['path'], 'steamapps', 'common', gamepath)
     
-    copyop = MoveOperation(srcpath, dstpath, library['path'])
-    copyop.callback = lambda x: callback(x, 100*(copyop.copied/copyop.size))
+    copyop = Operation(srcpath, dstpath, library['path'])
+    copyop.callback = lambda x: callback(x, 100*(copyop.copied/copyop.size)) # Set callback
     threading.Thread(target=lambda: copyop.start()).run()
 
-    callback('Copying metadata', 100)
-    
-    shutil.copy2(game['acfpath'], os.path.join(library['path'], 'steamapps')) # Copy ACF
+    callback('Copying metadata file', 100)
+    shutil.copy2(game['acfpath'], os.path.join(library['path'], 'steamapps')) # Copy ACF file
 
     if delete:
+        callback('Deleting original files', 100)
         shutil.rmtree(game['path'])
         os.remove(game['acfpath'])
 
-def delete(library, game):
-    '''Deletes game with ID `game` from library `library`. No callback.'''
-    game = library['games'][str(game)]
+
+def delete(library, ID):
+    '''Deletes game with ID from library. No callback.'''
+    game = library['games'][str(ID)]
 
     path = os.path.realpath(game['path'])
     acfpath = os.path.realpath(game['acfpath'])
