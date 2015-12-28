@@ -120,8 +120,8 @@ def move(sender, game, library, delete=True, callback=lambda x,y:...):
 
     needed = game['size'] - library['free'] #Needed in destination drive to move. If below zero, can copy.
     
-    assert needed >= 0,
-           'You need more space (%s) on the recipient drive to copy all of the game.' % bytesize(needed)
+    assert needed >= 0, (
+           'You need more space (%s) on the recipient drive to copy all of the game.' % bytesize(needed))
 
     srcpath = game['path']
     gamepath = os.path.basename(game['path']) # Name of folder
