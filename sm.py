@@ -114,14 +114,14 @@ def move(sender, game, library, delete=True, callback=lambda x,y:...):
     '''Moves game with ID `game` from library `sender` to `library`. If `delete` is true, deletes original copy.
     If callback is set, every operation done does callback(statusmsg, percentdone)'''
     
-    assert(library['path'] == sender['path'], 'The libraries are identical.')
+    assert library['path'] == sender['path'], 'The libraries are identical.'
     
     game = sender['games'][str(game)]
 
     needed = game['size'] - library['free'] #Needed in destination drive to move. If below zero, can copy.
     
-    assert(needed >= 0,
-           'You need more space (%s) on the recipient drive to copy all of the game.' % bytesize(needed))
+    assert needed >= 0,
+           'You need more space (%s) on the recipient drive to copy all of the game.' % bytesize(needed)
 
     srcpath = game['path']
     gamepath = os.path.basename(game['path']) # Name of folder
