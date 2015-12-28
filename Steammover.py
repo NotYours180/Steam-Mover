@@ -162,6 +162,8 @@ class Window:
             gamen = self.llis.get('active')
             lib = self.llib
             dstlib = self.rlib
+            srclab = self.llab
+            dstlab = self.rlab
             dstnam = 'right'
             srcbar = self.lbar
             dstbar = self.rbar
@@ -171,6 +173,8 @@ class Window:
             gamen = self.rlis.get('active')
             lib = self.rlib
             dstlib = self.llib
+            srclab = self.rlab
+            dstlab = self.llab
             srcbar = self.rbar
             dstbar = self.lbar
             dstnam = 'left'
@@ -190,19 +194,29 @@ class Window:
             
             remaining = dstlib['free'] - game['size']
 
+            updateitem(srclab, '%s (%s free, without game %s free)' % (
+                        bytesize(lib['capacity']), bytesize(lib['free']),
+                        bytesize(lib['free'] + game['size'])
+                        ))
+
             self.canvas(srcbar, lib['capacity'],[
                        (bgcolor,0,lib['capacity']),(usedcolor, 0, lib['used']),
                        (ohnecolor, lib['used'] - game['size'], lib['used'])
                        ])
             
             if remaining > 0:
-                updateitem(self.info, '%s\nSize: %s – %s remaining if moved to %s' % (
-                    name, bytesize(game['size']), bytesize(remaining), dstnam))
+                updateitem(self.info, '%s\nSize: %s – ID: %s' % (
+                    name, bytesize(game['size']), game['id']))
                 self.game = game
                 self.srclib = lib
                 self.dstlib = dstlib
                 self.button('normal')
-                
+
+                updateitem(dstlab, '%s (%s free, with game %s free)' % (
+                            bytesize(dstlib['capacity']), bytesize(dstlib['free']),
+                            bytesize(dstlib['free'] - game['size'])
+                            ))
+
                 self.canvas(dstbar, dstlib['capacity'],[
                             (bgcolor,0, dstlib['capacity']),(usedcolor, 0, dstlib['used']),
                             (withcolor, dstlib['used'], dstlib['used'] + game['size'])
@@ -212,6 +226,9 @@ class Window:
                     name, bytesize(game['size']), bytesize(abs(remaining)), dstnam))
                 self.button('disabled')
 
+                updateitem(dstlab, '%s (%s free)' % (
+                            bytesize(dstlib['capacity']), bytesize(dstlib['free'])))
+                
                 self.canvas(dstbar, dstlib['capacity'],[
                             (ohnecolor, 0, dstlib['capacity']),
                             (usedcolor, 0, dstlib['used']),
@@ -298,5 +315,6 @@ class Window:
         self.window()
         self.refresh()
 
-
-w = Window()
+if __name__ == '__main__':
+    win = Window()
+    win.window.mainloop()
