@@ -114,7 +114,7 @@ def move(sender, game, library, delete=True, callback=lambda x,y:...):
     '''Moves game with ID `game` from library `sender` to `library`. If `delete` is true, deletes original copy.
     If callback is set, every operation done does callback(statusmsg, percentdone)'''
     
-    assert library['path'] == sender['path'], 'The libraries are identical.'
+    assert library['path'] != sender['path'], 'The libraries are identical.'
     
     game = sender['games'][str(game)]
 
