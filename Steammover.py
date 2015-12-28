@@ -80,13 +80,15 @@ class Window:
         self.llib = llib
         self.rlib = rlib
 
-    def title(self, update, percent):
+    def title(self, update, percent=100):
+        '''Update title from callback.'''
         if percent > 99.9:
             self.window.title('Steam mover')
         else:
             self.window.title('Steam mover – %.2f%% – %s' %(percent, update)) 
 
     def op(self, typ):
+        '''Do operation on game.'''
         if typ == 'delete':
             if ask('Delete game?','Are you sure you want to delete %s (%s)?' %
                    (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
@@ -103,8 +105,14 @@ class Window:
         self.refresh()
         
     def button(self, state):
+        '''Changes status for operation buttons.'''
         for i in self.bcopy, self.bmove, self.bdel:
             i.config(state=state)
+
+    def open(self):
+        '''Open selected game in file explorer of choice.'''
+        if self.game:
+            os.startfile(self.game['path'])
 
     def select(self, side):
         if side == 'l':
@@ -114,20 +122,18 @@ class Window:
             lib = self.llib
             dstlib = self.rlib
             dstnam = 'right'
+            srcbar = self.lbar
+            dstbar = self.rbar
         else:
             if not self.rlib:
                 return False
             gamen = self.rlis.get('active')
             lib = self.rlib
             dstlib = self.llib
-            dstnam = 'left'
-
-        if dstnam == 'left':
             srcbar = self.rbar
             dstbar = self.lbar
-        else:
-            srcbar = self.lbar
-            dstbar = self.rbar
+            dstnam = 'left'
+            
         
         game = False
         for g in lib['games']:
@@ -138,6 +144,8 @@ class Window:
             name = game['name']
             if len(name) > 50:
                 name = name[:50] + '...' #Truncate name for display
+
+            self.bopen.config(state='normal') # Allow folder opening
             
             remaining = dstlib['free'] - game['size']
 
@@ -220,14 +228,17 @@ class Window:
         info = tk.Label(w, text='No game selected. Doubleclick one from either library.', width=42)
         info.grid(row=4, rowspan=2)
 
-        bcopy = tk.Button(w, text='Copy', command=lambda: self.op('copy'))
+        bcopy = tk.Button(w, text='Copy', command=lambda: self.op('copy'), state='disabled')
         bcopy.grid(row=4, column=1, sticky='nwe')
         
-        bmove = tk.Button(w, text='Move', command=lambda: self.op('move'))
+        bmove = tk.Button(w, text='Move', command=lambda: self.op('move'), state='disabled')
         bmove.grid(row=4, column=2, sticky='nwe')
 
-        bdel = tk.Button(w, text='Delete', command=lambda: self.op('delete'))
+        bdel = tk.Button(w, text='Delete', command=lambda: self.op('delete'), state='disabled')
         bdel.grid(row=4, column=3, sticky='nwe')
+
+        bopen = tk.Button(w, text='Open folder...', command=lambda: self.open(), state='disabled')
+        bopen.grid(row=5, column=1, sticky='nwe', columnspan=3)
 
         self.ltype = ltype
         self.rtype = rtype
@@ -241,8 +252,7 @@ class Window:
         self.bcopy = bcopy
         self.bmove = bmove
         self.bdel = bdel
-
-        self.button('disabled')
+        self.bopen = bopen
 
     def __init__(self):
         self.window()
