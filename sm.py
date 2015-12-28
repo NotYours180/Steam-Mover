@@ -81,7 +81,7 @@ class Operation:
             
             for file in files:
                 file = os.path.realpath(os.path.join(dirpath, file)) #Make newpath
-                thread = threading.Thread(target=lambda: self.copy(file, newpath))
+                thread = threading.Thread(target=lambda: self._copy(file, newpath))
                 thread.run()
 
     def _status(self, status):
@@ -120,7 +120,7 @@ def move(sender, game, library, delete=True, callback=lambda x,y:...):
 
     needed = game['size'] - library['free'] #Needed in destination drive to move. If below zero, can copy.
     
-    assert needed >= 0, (
+    assert needed < 0, (
            'You need more space (%s) on the recipient drive to copy all of the game.' % bytesize(needed))
 
     srcpath = game['path']
