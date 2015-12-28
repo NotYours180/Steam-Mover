@@ -7,7 +7,7 @@ usedcolor = '#000000'
 withcolor = '#448844'
 ohnecolor = '#ff4444'
 
-defaultlist = ["Library not found!, Make sure the path", "contains both 'steam.dll' and 'steamapps'!"]
+defaultlist = ["Library not found!, Make sure the path", "contains both 'steam.dll' and 'steamapps'."]
 
 def names(library):
     lib = library['games']
@@ -173,7 +173,7 @@ class Window:
 
     def window(self):
         w = tk.Tk()
-        w.title('Steam mover')
+        w.title('Steam Mover')
         w.resizable(0,1)
         w.minsize(600,300)
         self.window = w
@@ -217,7 +217,7 @@ class Window:
         rlis.bind('<Double-Button-1>', lambda e: self.select('r'))
         
 
-        info = tk.Label(w, text='No game selected.', width=42)
+        info = tk.Label(w, text='No game selected. Doubleclick one from either library.', width=42)
         info.grid(row=4, rowspan=2)
 
         bcopy = tk.Button(w, text='Copy', command=lambda: self.op('copy'))
