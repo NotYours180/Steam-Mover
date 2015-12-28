@@ -13,12 +13,18 @@ def dirsize(path):
             total += os.path.getsize(file)
     return total
 
-def bytesize(num):
-    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
-        if abs(num) < 1024.0:
-            return "%3.1f %sB" % (num, unit)
-        num /= 1024.0
-    return "%.1f %sB" % (num, 'Yi')
+def bytesize(num, binary=True):
+    '''Given a number of bytes, human-formats as binary(kibi, mebi; *1024) or non-binary (kilo, mega; *1000) up to yotta/yobibytes.'''
+    if binary:
+        divisor = 1024.0
+    else:
+        divisor = 1000.0
+    
+    for unit in ['','K','M','G','T','P','E','Z']:
+        if abs(num) < divisor:
+            return "%3.1f %s%sB" % (num,  unit, 'i'*(binary))
+        num /= divisor
+    return "%.1f Y%sB" % (num, 'i'*(binary))
 
 def buildfolder(path):
     '''Taking steamapps path, builds a list of games'''
