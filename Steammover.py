@@ -7,7 +7,7 @@ usedcolor = '#000000'
 withcolor = '#448844'
 ohnecolor = '#ff4444'
 
-defaultlist = ["Library not found!, Make sure the path", "contains both 'steam.dll' and 'steamapps'."]
+defaultlist = ["Library not found! Make sure the path", "contains both 'steam.dll' and 'steamapps'."]
 
 def names(library):
     lib = library['games']
@@ -23,6 +23,22 @@ def updateitem(box, item):
         else:
             for i in item:
                 box.insert('end', i)
+
+def getpath(path):
+    '''Attempts to resolve to Steam library path.'''
+    base = os.path.basename(path)
+    downpath = os.path.join(path, 'Steam')
+    dllpath = os.path.join(path, 'steam.dll')
+    if os.path.exists(dllpath):
+        return path
+    elif base == 'steamapps':
+        path = os.path.join(path, '..')
+    elif base in ('common', 'downloading', 'sourcemods', 'temp'):
+        path = os.path.join(path, '..', '..')
+    elif os.path.exists(maybe):
+        path = maybe
+
+    return path
 
 class Window:
     def createdefault(self):
@@ -50,7 +66,9 @@ class Window:
     def refresh(self):
         '''Updates libary list'''
         try:
-            llib = buildfolder(self.ltype.get())
+            path = getpath(self.ltype.get())
+            self.title('Scanning left library')
+            llib = buildfolder(path)
         except:
             llib = False
             updateitem(self.llab, 'No drive found!')
@@ -64,7 +82,9 @@ class Window:
             updateitem(self.llis, sorted(names(llib)))
                         
         try:
-            rlib = buildfolder(self.rtype.get())
+            path = getpath(self.rtype.get())
+            self.title('Scanning right library')
+            rlib = buildfolder(path)
         except:
             rlib = False
             updateitem(self.rlab, 'No drive found!')
@@ -76,16 +96,22 @@ class Window:
                        (bytesize(rlib['capacity']), bytesize(rlib['free']))
                        )
             updateitem(self.rlis, sorted(names(rlib)))
-        
+
+        self.title() #reset title
         self.llib = llib
         self.rlib = rlib
 
-    def title(self, update, percent=100):
+    def title(self, update=None, percent=None):
         '''Update title from callback.'''
-        if percent > 99.9:
-            self.window.title('Steam mover')
+        if percent == None:
+            if update == None:
+                self.window.title('Steam Mover')
+            else:
+                self.window.title('Steam Mover – %s' % update)
+        elif percent > 99.9:
+            self.window.title('Steam Mover')
         else:
-            self.window.title('Steam mover – %.2f%% – %s' %(percent, update)) 
+            self.window.title('Steam Mover – %.2f%% – %s' %(percent, update)) 
 
     def op(self, typ):
         '''Do operation on game.'''
@@ -181,7 +207,6 @@ class Window:
 
     def window(self):
         w = tk.Tk()
-        w.title('Steam Mover')
         w.resizable(0,1)
         w.minsize(600,300)
         self.window = w
