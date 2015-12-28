@@ -1,5 +1,6 @@
 from sm import *
 import tkinter as tk
+import platform
 ask = tk.messagebox.askyesno
 
 bgcolor = '#dddddd'
@@ -8,6 +9,20 @@ withcolor = '#448844'
 ohnecolor = '#ff4444'
 
 defaultlist = ["Library not found! Make sure the path", "contains both 'steam.dll' and 'steamapps'."]
+
+if os.path.isfile('C:/Program Files (x86)/Steam/Steam.dll'):
+    defaultleft = 'C:/Program Files (x86)/Steam/'
+    defaultright = 'N:/'
+elif os.path.isfile('C:/Program Files/Steam/Steam.dll'):
+    defaultleft = 'C:/Program Files/Steam/'
+    defaultright = 'N:/'
+elif os.path.isfolder('~/Library/Application Support/Steam/'):
+    defaultleft = '~/Library/Application Support/Steam/'
+    defaultright = '/'
+elif os.path.isfolder('~/.local/share/Steam'):
+    defaultleft = '~/Library/Application Support/Steam/'
+    defaultright = '/'
+
 
 def names(library):
     lib = library['games']
@@ -35,8 +50,8 @@ def getpath(path):
         path = os.path.join(path, '..')
     elif base in ('common', 'downloading', 'sourcemods', 'temp'):
         path = os.path.join(path, '..', '..')
-    elif os.path.exists(maybe):
-        path = maybe
+    elif os.path.exists(downpath):
+        path = downpath
 
     return path
 
@@ -216,8 +231,8 @@ class Window:
         ltype = tk.Entry(w, width=50) #Path entry
         rtype = tk.Entry(w, width=50)
 
-        ltype.insert(0, 'C:/Program Files (x86)/Steam')
-        rtype.insert(0, 'N:/Steam')
+        ltype.insert(0, defaultleft)
+        rtype.insert(0, defaultright)
 
         ltype.bind('<Return>', lambda e: self.refresh())
         rtype.bind('<Return>', lambda e: self.refresh())
