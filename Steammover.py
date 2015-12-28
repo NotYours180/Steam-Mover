@@ -2,10 +2,10 @@ from sm import *
 import tkinter as tk
 ask = tk.messagebox.askyesno
 
-bgcolor = 'white'
-usedcolor = 'black'
-withcolor = 'green'
-ohnecolor = 'red'
+bgcolor = '#dddddd'
+usedcolor = '#000000'
+withcolor = '#448844'
+ohnecolor = '#ff4444'
 
 defaultlist = ["Library not found!, Make sure the path", "contains both 'steam.dll' and 'steamapps'!"]
 
@@ -39,6 +39,8 @@ class Window:
             col = [col]
 
         for colour, left, right in col:
+            if colour == 'none':
+                continue #Do not draw
             left /= cap
             right /= cap
             left *= 300
@@ -55,7 +57,7 @@ class Window:
             updateitem(self.llis, defaultlist)
         else:
             self.canvas(self.lbar, llib['capacity'],[
-                       ('white',0,llib['capacity']),('black', 0, llib['used'])])
+                       (bgcolor,0,llib['capacity']),(usedcolor, 0, llib['used'])])
             updateitem(self.llab, '%s (%s free)' %
                        (bytesize(llib['capacity']), bytesize(llib['free']))
                        )
@@ -69,7 +71,7 @@ class Window:
             updateitem(self.rlis, defaultlist)
         else:
             self.canvas(self.rbar, rlib['capacity'],[
-                        ('white',0,rlib['capacity']),('black', 0, rlib['used'])])
+                        (bgcolor,0,rlib['capacity']),(usedcolor, 0, rlib['used'])])
             updateitem(self.rlab, '%s (%s free)' %
                        (bytesize(rlib['capacity']), bytesize(rlib['free']))
                        )
