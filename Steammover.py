@@ -1,5 +1,6 @@
 from sm import *
 import tkinter as tk
+import tkinter.messagebox as ask
 from webbrowser import open_new_tab as web
 
 bgcolor = '#dddddd'
@@ -13,15 +14,18 @@ defaultlist = ["Library not found.",
 
 for i in ('C:/Program Files (x86)/Steam/','C:/Program Files/Steam/',
           '~/Library/Application Support/Steam/', '~/.local/share/Steam'):
+    # Find Steam library
     configpath = os.path.join(i, 'steamapps', 'libraryfolders.vdf') #List of other libraries
-    if os.path.isfile(configpath): #Config exists
+    if os.path.isfile(configpath): #Config exists; set as default
         defaultleft = i
-        with open(configpath) as f: #Set right path
+        with open(configpath) as f: #Set right path:
             for line in f.readlines():
-                e = acfgetreg(line, '\d+')
-                if e and (e != defaultleft):
-                    defaultright = e
-                    break
+                e = acfgetreg(line, '\d+') #Scan lines for numbered paths indicating libraries 
+                if e:
+                    e = os.path.realpath(e).replace('\\\\','\\') #Normalise escapes
+                    if e != defaultleft:
+                        defaultright = e
+                        break
             else: #none found
                 defaultright = ''
         break
@@ -29,10 +33,12 @@ else:
     defaultleft = ''
 
 def names(library):
+    '''For a library, returns a list of names.'''
     lib = library['games']
     return [lib[x]['name'] for x in lib] 
 
 def updateitem(box, item):
+    '''Updates a tkinter item with given text or iterable.'''
     if type(box) == tk.Label:
         box.config(text=item)
     else:
@@ -65,20 +71,13 @@ def getpath(path):
                     break
             else: #No result
                 return False
-        
-
+    
     return os.path.realpath(path)
 
 class Window:
-    def createdefault(self):
-        try:
-            with open('libraries.txt', 'x') as f:
-                f.write(defaultsettings)
-        except FileExistsError:
-            ...
-        os.startfile(os.path.realpath('libraries.txt'))
-
+    '''Steam Mover default window'''
     def canvas(self, canvas, cap, col):
+        '''Update CANVAS with x proportional to CAP. COL is a list of (colour, x1, x2).'''
         canvas.delete('bar')
         if type(col[0])== str:
             col = [col]
@@ -93,7 +92,7 @@ class Window:
             canvas.create_rectangle(left, 0, right, 20, fill=colour, width=0, tags='bar')
         
     def refresh(self):
-        '''Updates libary list'''
+        '''Updates library list.'''
         for side, inp, lab, lis, bar in (
             ('left', self.ltype, self.llab, self.llis, self.lbar),
             ('right', self.rtype, self.rlab, self.rlis, self.rbar)):
@@ -136,46 +135,30 @@ class Window:
         else:
             self.window.title('Steam Mover – %.2f%% – %s' %(percent, update)) 
 
-    def op(self, typ):
+    def op(self, verb):
         '''Do operation on game.'''
-        if typ == 'delete':
-            if tk.messagebox.askyesno('Delete game?','Are you sure you want to delete %s (%s)?' %
-                   (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
+        if ask.askyesno('%s game?' % verb,'Are you sure you want to %s %s (%s)?' %
+                           (verb.lower(), self.game['name'], bytesize(self.game['size'])),
+                            icon='warning', default='no'):
+            if verb == 'Delete':
                 delete(self.srclib, self.game['id'])
-        elif typ == 'deletesteam':
-            if tk.messagebox.askyesno('Delete game via Steam?','Are you sure you want to delete %s (%s) with Steam? Steam may mistake it for another copy of the game if not reloaded.' %
-                   (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
-                web('steam://uninstall/%s' % self.game['id'])
-        elif typ == 'move':
-            if tk.messagebox.askyesno('Move game?', 'Are you sure you want to move %s (%s)?' %
-                   (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
+            elif verb == 'Move':
                 move(self.srclib, self.game['id'], self.dstlib, True, self.title)
-        elif typ == 'copy':
-            if tk.messagebox.askyesno('Copy game?', 'Are you sure you want to copy %s (%s)?' %
-                   (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
+            elif verb == 'Copy':
                 move(self.srclib, self.game['id'], self.dstlib, False, self.title)
-
-        self.refresh()
+            self.refresh()
         
-    def button(self, cat='move', state='normal'):
+    def button(self, category='move', state='normal'):
         '''Changes status for operation buttons.'''
-        if cat == 'move':
+        if category == 'move':
             btns = (self.bcopy, self.bmove)
         else:
             btns = (self.bopen, self.bplay, self.bdel, self.btool)
         for i in btns:
             i.config(state=state)
 
-    def open(self):
-        '''Open selected game in file explorer of choice.'''
-        if self.game:
-            os.startfile(self.game['path'])
-
-    def play(self):
-        if self.game:
-            web('steam://run/%s' % self.game['id'])
-
-    def tools(self):        
+    def tools(self):
+        '''Opens tools popup menu'''
         if self.game:
             x = self.window.winfo_rootx() + self.btool.winfo_x()
             y = self.window.winfo_rooty() + self.btool.winfo_y()
@@ -185,8 +168,28 @@ class Window:
         if side == 'l':
             if not self.llib:
                 return False
-            gamen = self.llis.get('active')
             lib = self.llib
+            selectedgame = self.llis.get('active')
+        else:
+            if not self.rlib:
+                return False
+            lib = self.rlib
+            selectedgame = self.rlis.get('active')
+            
+        for g in lib['games']:
+            if lib['games'][g]['name'] == selectedgame:
+                game = lib['games'][g]
+                break
+        else:
+            updateitem(self.info, 'No game selected.')
+            return None            
+
+        #Rest of block relies on game existing, naturally
+
+        self.button('misc') #Allow single-library buttons
+        self.game = game
+        
+        if side == 'l':
             dstlib = self.rlib
             srclab = self.llab
             dstlab = self.rlab
@@ -195,10 +198,6 @@ class Window:
             srcbar = self.lbar
             dstbar = self.rbar
         else:
-            if not self.rlib:
-                return False
-            gamen = self.rlis.get('active')
-            lib = self.rlib
             dstlib = self.llib
             srclab = self.rlab
             dstlab = self.llab
@@ -206,77 +205,54 @@ class Window:
             dstbar = self.lbar
             srcnam = 'right'
             dstnam = 'left'
-            
         
-        game = False
-        for g in lib['games']:
-            if lib['games'][g]['name'] == gamen:
-                game = lib['games'][g]
+        name = game['name']
+        if len(name) > 50:
+            name = name[:50] + '...' #Truncate name for display
+        
+        needed = game['size'] - dstlib['free'] #Bytes needed on other drive
 
-        if game: # if game is found
-            self.game = game
-            name = game['name']
-            if len(name) > 50:
-                name = name[:50] + '...' #Truncate name for display
-
-            self.button('manip')
+        #Update canvas for own game showing space taken
+        self.canvas(srcbar, lib['capacity'],[
+                   (bgcolor,0,lib['capacity']),(usedcolor, 0, lib['used']),
+                   (ohnecolor, lib['used'] - game['size'], lib['used'])
+                   ])
+        
+        
+        if needed < 0: #Can move to destination drive
+            self.srclib = lib
+            self.dstlib = dstlib
             
-            remaining = dstlib['free'] - game['size']
+            self.button() #Allow movement to other library
 
-            updateitem(srclab, '%s (%s free, without game %s free)' % (
-                        bytesize(lib['capacity']), bytesize(lib['free']),
-                        bytesize(lib['free'] + game['size'])
-                        ))
+            updateitem(self.info, '%s (%s side)\nSize: %s – ID: %s' % (
+                name, srcnam, bytesize(game['size']), game['id']))
 
-            self.canvas(srcbar, lib['capacity'],[
-                       (bgcolor,0,lib['capacity']),(usedcolor, 0, lib['used']),
-                       (ohnecolor, lib['used'] - game['size'], lib['used'])
-                       ])
-            
-            
-            if remaining > 0:
-                updateitem(self.info, '%s (%s side)\nSize: %s – ID: %s' % (
-                    name, srcnam, bytesize(game['size']), game['id']))
-                self.srclib = lib
-                self.dstlib = dstlib
-                self.button() #Allow movement buttons
-
-                updateitem(dstlab, '%s (%s free, with game %s free)' % (
-                            bytesize(dstlib['capacity']), bytesize(dstlib['free']),
-                            bytesize(dstlib['free'] - game['size'])
-                            ))
-
-                self.canvas(dstbar, dstlib['capacity'],[
-                            (bgcolor,0, dstlib['capacity']),(usedcolor, 0, dstlib['used']),
-                            (withcolor, dstlib['used'], dstlib['used'] + game['size'])
-                            ])
-            else:
-                updateitem(self.info, '%s\nSize: %s – %s more needed on %s library' % (
-                    name, bytesize(game['size']), bytesize(abs(remaining)), dstnam))
-                
-                self.button('move', 'disabled') #Disallow movement buttons
-
-                updateitem(dstlab, '%s (%s free)' % (
-                            bytesize(dstlib['capacity']), bytesize(dstlib['free'])))
-                
-                self.canvas(dstbar, dstlib['capacity'],[
-                            (ohnecolor, 0, dstlib['capacity']),
-                            (usedcolor, 0, dstlib['used']),
-                            ])
+            self.canvas(dstbar, dstlib['capacity'],[
+                        (bgcolor,0, dstlib['capacity']), (usedcolor, 0, dstlib['used']),
+                        (withcolor, dstlib['used'], dstlib['used'] + game['size'])
+                        ])
         else:
-            defaultcanv = True
-            updateitem(self.info, 'No game selected.')
+            self.button('move', 'disabled') #Disallow movement buttons
+            
+            updateitem(self.info, '%s\nSize: %s – %s more needed on %s library' % (
+                name, bytesize(game['size']), bytesize(needed), dstnam))
+            
+            self.canvas(dstbar, dstlib['capacity'],[
+                        (ohnecolor, 0, dstlib['capacity']),
+                        (usedcolor, 0, dstlib['used'])
+                        ])
 
-    def window(self):
-        w = tk.Tk()
-        w.resizable(0,1)
-        w.minsize(600,300)
-        self.window = w
+    def __init__(self):
+        window = tk.Tk()
+        window.resizable(0,1)
+        window.minsize(600,300)
 
-        w.grid_rowconfigure(3, weight=1)
-        
-        ltype = tk.Entry(w, width=50) #Path entry
-        rtype = tk.Entry(w, width=50)
+        window.grid_rowconfigure(3, weight=1)
+
+        #Path entry boxes
+        ltype = tk.Entry(window, width=50)
+        rtype = tk.Entry(window, width=50)
 
         ltype.bind('<Return>', lambda e: self.refresh())
         rtype.bind('<Return>', lambda e: self.refresh())
@@ -287,55 +263,58 @@ class Window:
         ltype.insert(0, defaultleft)
         rtype.insert(0, defaultright)
 
-        llab = tk.Label(w)
-        rlab = tk.Label(w)
+        #Sizing labels
+        llab = tk.Label(window)
+        rlab = tk.Label(window)
         
         llab.grid(row=1)
         rlab.grid(row=1,column=1, columnspan=3)
 
-
-        lbar = tk.Canvas(w, height=20, width=300) 
-        rbar = tk.Canvas(w, height=20, width=300)
+        #Canvases for size
+        lbar = tk.Canvas(window, height=20, width=300) 
+        rbar = tk.Canvas(window, height=20, width=300)
 
         lbar.grid(row=2)
         rbar.grid(row=2,column=1, columnspan=3)
 
-
-        llis = tk.Listbox(w, width=50)
-        rlis = tk.Listbox(w, width=50)
+        #Lists of games
+        llis = tk.Listbox(window, width=50)
+        rlis = tk.Listbox(window, width=50)
 
         llis.grid(row=3, sticky='ns')
         rlis.grid(row=3, column=1, sticky='ns', columnspan=3)
 
         llis.bind('<Double-Button-1>', lambda e: self.select('l'))
-        rlis.bind('<Double-Button-1>', lambda e: self.select('r'))  
+        rlis.bind('<Double-Button-1>', lambda e: self.select('r'))
 
-        info = tk.Label(w, text='No game selected. Doubleclick one from either library.', width=42)
+        #Information label
+        info = tk.Label(window, text='No game selected. Doubleclick one from either library.', width=42)
         info.grid(row=4, rowspan=2)
 
-        bcopy = tk.Button(w, text='Copy', command=lambda: self.op('copy'), state='disabled')
+        #Buttons
+        bcopy = tk.Button(window, text='Copy', command=lambda: self.op('Copy'), state='disabled')
         bcopy.grid(row=4, column=1, sticky='nwe')
         
-        bmove = tk.Button(w, text='Move', command=lambda: self.op('move'), state='disabled')
+        bmove = tk.Button(window, text='Move', command=lambda: self.op('Move'), state='disabled')
         bmove.grid(row=4, column=2, sticky='nwe')
 
-        bdel = tk.Button(w, text='Delete', command=lambda: self.op('delete'), state='disabled')
+        bdel = tk.Button(window, text='Delete', command=lambda: self.op('Delete'), state='disabled')
         bdel.grid(row=4, column=3, sticky='nwe')
 
-        btool = tk.Button(w, text='Tools...', state='disabled', command=self.tools)
+        btool = tk.Button(window, text='Tools...', command=self.tools, state='disabled', )
         btool.grid(row=5, column=1, sticky='nwe')
         
-        bopen = tk.Button(w, text='Open folder', command=self.open, state='disabled')
+        bopen = tk.Button(window, text='Open folder', command=lambda: os.startfile(self.game['path']), state='disabled')
         bopen.grid(row=5, column=2, sticky='nwe')
 
-        bplay = tk.Button(w, text='Play game', command=lambda: self.play(), state='disabled')
+        bplay = tk.Button(window, text='Play game', command=lambda: web('steam://run/%s' % self.game['id']), state='disabled')
         bplay.grid(row=5, column=3, sticky='nwe')
 
-        popup = tk.Menu(w, tearoff=0)
+        #Tools menu popup
+        popup = tk.Menu(window, tearoff=0)
         popup.add_command(label='Details in Steam', command = lambda: web('steam://nav/games/details/%s' % self.game['id']))
         popup.add_command(label='Verify cache', command = lambda: web('steam://validate/%s' % self.game['id']))
         popup.add_command(label='Backup to file...', command = lambda: web('steam://backup/%s' % self.game['id']))
-        popup.add_command(label='Uninstall by ID...', command = lambda: self.op('deletesteam'))
 
         visit = tk.Menu(popup, tearoff=0)
         visit.add_command(label='SteamDB stats', command = lambda: web('https://steamdb.info/app/%s' % self.game['id']))
@@ -344,32 +323,31 @@ class Window:
         visit.add_command(label='News page', command = lambda: web('steam://appnews/%s' % self.game['id']))
 
         popup.add_cascade(label='Visit...', menu=visit)
-    
+
+        self.window = window
         self.ltype = ltype
         self.rtype = rtype
-        self.llis = llis
-        self.rlis = rlis
         self.llab = llab
         self.rlab = rlab
         self.lbar = lbar
         self.rbar = rbar
+        self.llis = llis
+        self.rlis = rlis
         self.info = info
         self.popup = popup
-        
         self.bcopy = bcopy
         self.bmove = bmove
         self.bdel = bdel
         self.bopen = bopen
         self.bplay = bplay
-        self.btool = btool        
-
-    def __init__(self):
-        self.window()
+        self.btool = btool
+        
         self.game = False
         self.refresh()
         
         
 
 if __name__ == '__main__':
+    print('Launching...')
     win = Window()
     win.window.mainloop()
