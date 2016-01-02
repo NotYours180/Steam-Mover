@@ -9,7 +9,7 @@ withcolor = '#448844'
 ohnecolor = '#ff4444'
 
 defaultlist = ["Library not found! Make sure the path", "contains both 'steam.dll' and 'steamapps'.",
-               "Not sure where it is? Try providing just 'C:/' or equivalent", "and we'll try to scan for the folder."]
+               "Not sure where it is? Try providing a home path", "and we'll try to scan for a library."]
 
 if os.path.isfile('C:/Program Files (x86)/Steam/Steam.dll'):
     defaultleft = 'C:/Program Files (x86)/Steam/'
@@ -91,45 +91,32 @@ class Window:
         
     def refresh(self):
         '''Updates libary list'''
-        try:
-            self.title('Looking for left library')
-            path = getpath(self.ltype.get())
-            self.title('Scanning left library')
-            llib = buildfolder(path)
-        except:
-            llib = False
-            updateitem(self.llab, 'No drive found!')
-            updateitem(self.llis, defaultlist)
-        else:
-            updateitem(self.ltype, path)
-            self.canvas(self.lbar, llib['capacity'],[
-                       (bgcolor,0,llib['capacity']),(usedcolor, 0, llib['used'])])
-            updateitem(self.llab, '%s (%s free)' %
-                       (bytesize(llib['capacity']), bytesize(llib['free']))
-                       )
-            updateitem(self.llis, sorted(names(llib)))
-                        
-        try:
-            self.title('Looking for right library')
-            path = getpath(self.rtype.get())
-            self.title('Scanning right library')
-            rlib = buildfolder(path)
-        except:
-            rlib = False
-            updateitem(self.rlab, 'No drive found!')
-            updateitem(self.rlis, defaultlist)
-        else:
-            updateitem(self.rtype, path)
-            self.canvas(self.rbar, rlib['capacity'],[
-                        (bgcolor,0,rlib['capacity']),(usedcolor, 0, rlib['used'])])
-            updateitem(self.rlab, '%s (%s free)' %
-                       (bytesize(rlib['capacity']), bytesize(rlib['free']))
-                       )
-            updateitem(self.rlis, sorted(names(rlib)))
-
-        self.title() #reset title
-        self.llib = llib
-        self.rlib = rlib
+        for side, inp, lab, lis, bar in (
+            ('left', self.ltype, self.llab, self.llis, self.lbar),
+            ('right', self.rtype, self.rlab, self.rlis, self.rbar)):
+            try:
+                self.title('Looking for %s library' % side)
+                path = getpath(inp.get())
+                self.title('Scanning %s library' % side)
+                lib = buildfolder(path)
+            except:
+                lib = False
+                updateitem(lab, 'No drive found!')
+                updateitem(lis, defaultlist)
+            else:
+                updateitem(inp, path)
+                self.canvas(bar, lib['capacity'],[
+                           (bgcolor,0,lib['capacity']),(usedcolor, 0, lib['used'])])
+                updateitem(lab, '%s (%s free)' %
+                           (bytesize(lib['capacity']), bytesize(lib['free']))
+                           )
+                updateitem(lis, sorted(names(lib)))
+            if side == 'left':
+                self.llib = lib
+            else:
+                self.rlib = lib
+        
+        self.title() # Clear title
 
     def title(self, update=None, percent=None):
         '''Update title from callback.'''
