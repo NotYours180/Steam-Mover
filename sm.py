@@ -4,6 +4,9 @@ import shutil
 import threading
 
 # ACF property extracting regular expression.
+def thread(func, *args, **kwargs):
+    thread = threading.Thread(target=func, args=args, kwargs=kwargs).run()
+
 def acfgetreg(string, key):
     found = re.findall('"%s"\s+"(.+)"' % key, string)
     if found:
@@ -115,7 +118,7 @@ class Operation:
         self.copied = 0 # Bytes copied
 
 
-def move(sender, game, library, delete=True, callback=lambda x,y:...):
+def move(sender, game, library, delete=True, callback=None):
     '''Moves game with ID `game` from library `sender` to `library`. If `delete` is true, deletes original copy.
     If callback is set, every operation done does callback(statusmsg, percentdone)'''
     
@@ -131,10 +134,15 @@ def move(sender, game, library, delete=True, callback=lambda x,y:...):
     srcpath = game['path']
     gamepath = os.path.basename(game['path']) # Name of folder
     dstpath = os.path.join(library['path'], 'steamapps', 'common', gamepath)
-    
+
+    if os.path.isdir(dstpath):
+        callback('Deleting existent paths', 0)
+        shutil.rmtree(dstpath)
+
     copyop = Operation(srcpath, dstpath, library['path'])
-    copyop.callback = lambda x: callback(x, 100*(copyop.copied/copyop.size)) # Set callback
-    threading.Thread(target=lambda: copyop.start()).run()
+    if callable(callback):
+        copyop.callback = lambda x: callback(x, 100*(copyop.copied/copyop.size))
+    thread(copyop.start)
 
     callback('Copying metadata file', 100)
     shutil.copy2(game['acfpath'], os.path.join(library['path'], 'steamapps')) # Copy ACF file
