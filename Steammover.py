@@ -1,6 +1,6 @@
 from sm import *
 import tkinter as tk
-import platform
+from webbrowser import open_new_tab as web
 ask = tk.messagebox.askyesno
 
 bgcolor = '#dddddd'
@@ -110,7 +110,8 @@ class Window:
                 updateitem(lab, '%s (%s free)' %
                            (bytesize(lib['capacity']), bytesize(lib['free']))
                            )
-                updateitem(lis, sorted(names(lib)))
+                updateitem(lis, sorted(names(lib),
+                            key=lambda x: x.lower().replace('the ','').replace('a ','')))
             if side == 'left':
                 self.llib = lib
             else:
@@ -136,6 +137,10 @@ class Window:
             if ask('Delete game?','Are you sure you want to delete %s (%s)?' %
                    (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
                 delete(self.srclib, self.game['id'])
+        elif typ == 'deletesteam':
+            if ask('Delete game via Steam?','Are you sure you want to delete %s (%s) with Steam? Steam may mistake it for another copy of the game if not reloaded.' %
+                   (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
+                web('steam://uninstall/%s' % self.game['id'])
         elif typ == 'move':
             if ask('Move game?', 'Are you sure you want to move %s (%s)?' %
                    (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
@@ -147,15 +152,29 @@ class Window:
 
         self.refresh()
         
-    def button(self, state):
+    def button(self, cat='move', state='normal'):
         '''Changes status for operation buttons.'''
-        for i in self.bcopy, self.bmove, self.bdel:
+        if cat == 'move':
+            btns = (self.bcopy, self.bmove)
+        else:
+            btns = (self.bopen, self.bplay, self.bdel, self.btool)
+        for i in btns:
             i.config(state=state)
 
     def open(self):
         '''Open selected game in file explorer of choice.'''
         if self.game:
             os.startfile(self.game['path'])
+
+    def play(self):
+        if self.game:
+            web('steam://run/%s' % self.game['id'])
+
+    def tools(self):        
+        if self.game:
+            x = self.window.winfo_rootx() + self.btool.winfo_x()
+            y = self.window.winfo_rooty() + self.btool.winfo_y()
+            self.popup.tk_popup(x,y, 0)
 
     def select(self, side):
         if side == 'l':
@@ -190,11 +209,12 @@ class Window:
                 game = lib['games'][g]
 
         if game: # if game is found
+            self.game = game
             name = game['name']
             if len(name) > 50:
                 name = name[:50] + '...' #Truncate name for display
 
-            self.bopen.config(state='normal') # Allow folder opening
+            self.button('manip')
             
             remaining = dstlib['free'] - game['size']
 
@@ -208,13 +228,13 @@ class Window:
                        (ohnecolor, lib['used'] - game['size'], lib['used'])
                        ])
             
+            
             if remaining > 0:
                 updateitem(self.info, '%s (%s side)\nSize: %s – ID: %s' % (
                     name, srcnam, bytesize(game['size']), game['id']))
-                self.game = game
                 self.srclib = lib
                 self.dstlib = dstlib
-                self.button('normal')
+                self.button() #Allow movement buttons
 
                 updateitem(dstlab, '%s (%s free, with game %s free)' % (
                             bytesize(dstlib['capacity']), bytesize(dstlib['free']),
@@ -228,7 +248,8 @@ class Window:
             else:
                 updateitem(self.info, '%s\nSize: %s – %s more needed on %s library' % (
                     name, bytesize(game['size']), bytesize(abs(remaining)), dstnam))
-                self.button('disabled')
+                
+                self.button('move', 'disabled') #Disallow movement buttons
 
                 updateitem(dstlab, '%s (%s free)' % (
                             bytesize(dstlib['capacity']), bytesize(dstlib['free'])))
@@ -283,8 +304,7 @@ class Window:
         rlis.grid(row=3, column=1, sticky='ns', columnspan=3)
 
         llis.bind('<Double-Button-1>', lambda e: self.select('l'))
-        rlis.bind('<Double-Button-1>', lambda e: self.select('r'))
-        
+        rlis.bind('<Double-Button-1>', lambda e: self.select('r'))  
 
         info = tk.Label(w, text='No game selected. Doubleclick one from either library.', width=42)
         info.grid(row=4, rowspan=2)
@@ -298,9 +318,29 @@ class Window:
         bdel = tk.Button(w, text='Delete', command=lambda: self.op('delete'), state='disabled')
         bdel.grid(row=4, column=3, sticky='nwe')
 
-        bopen = tk.Button(w, text='Open folder...', command=lambda: self.open(), state='disabled')
-        bopen.grid(row=5, column=1, sticky='nwe', columnspan=3)
+        btool = tk.Button(w, text='Tools...', state='disabled', command=self.tools)
+        btool.grid(row=5, column=1, sticky='nwe')
+        
+        bopen = tk.Button(w, text='Open folder', command=self.open, state='disabled')
+        bopen.grid(row=5, column=2, sticky='nwe')
 
+        bplay = tk.Button(w, text='Play game', command=lambda: self.play(), state='disabled')
+        bplay.grid(row=5, column=3, sticky='nwe')
+
+        popup = tk.Menu(w, tearoff=0)
+        popup.add_command(label='Details in Steam', command = lambda: web('steam://nav/games/details/%s' % self.game['id']))
+        popup.add_command(label='Verify cache', command = lambda: web('steam://validate/%s' % self.game['id']))
+        popup.add_command(label='Backup to file...', command = lambda: web('steam://backup/%s' % self.game['id']))
+        popup.add_command(label='Uninstall by ID...', command = lambda: self.op('deletesteam'))
+
+        visit = tk.Menu(popup, tearoff=0)
+        visit.add_command(label='SteamDB stats', command = lambda: web('https://steamdb.info/app/%s' % self.game['id']))
+        visit.add_command(label='Store page', command = lambda: web('steam://url/StoreAppPage/%s' % self.game['id']))
+        visit.add_command(label='Game hub', command = lambda: web('steam://url/GameHub/%s' % self.game['id']))
+        visit.add_command(label='News page', command = lambda: web('steam://appnews/%s' % self.game['id']))
+
+        popup.add_cascade(label='Visit...', menu=visit)
+    
         self.ltype = ltype
         self.rtype = rtype
         self.llis = llis
@@ -310,13 +350,18 @@ class Window:
         self.lbar = lbar
         self.rbar = rbar
         self.info = info
+        self.popup = popup
+        
         self.bcopy = bcopy
         self.bmove = bmove
         self.bdel = bdel
         self.bopen = bopen
+        self.bplay = bplay
+        self.btool = btool        
 
     def __init__(self):
         self.window()
+        self.game = False
         self.refresh()
 
 if __name__ == '__main__':
