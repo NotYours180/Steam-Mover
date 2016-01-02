@@ -3,11 +3,11 @@ import os
 import shutil
 import threading
 
-# ACF property extracting regular expression.
 def thread(func, *args, **kwargs):
     thread = threading.Thread(target=func, args=args, kwargs=kwargs).run()
 
 def acfgetreg(string, key):
+    '''ACF property extracting regular expression'''
     found = re.findall('"%s"\s+"(.+)"' % key, string)
     if found:
         return found[0]
@@ -89,8 +89,7 @@ class Operation:
             
             for file in files:
                 file = os.path.realpath(os.path.join(dirpath, file)) #Make newpath
-                thread = threading.Thread(target=lambda: self._copy(file, newpath))
-                thread.run()
+                thread(self._copy, file, newpath)
 
     def _status(self, status):
         '''Runs callback with status and attempts to stop divison by zero errors.'''
