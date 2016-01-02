@@ -8,22 +8,26 @@ usedcolor = '#000000'
 withcolor = '#448844'
 ohnecolor = '#ff4444'
 
-defaultlist = ["Library not found! Make sure the path", "contains both 'steam.dll' and 'steamapps'.",
-               "Not sure where it is? Try providing a home path", "and we'll try to scan for a library."]
+defaultlist = ["Library not found.",
+        "Not sure where it is? Try providing a home path", "and we'll try to scan for a library."]
 
-if os.path.isfile('C:/Program Files (x86)/Steam/Steam.dll'):
-    defaultleft = 'C:/Program Files (x86)/Steam/'
-    defaultright = 'N:/'
-elif os.path.isfile('C:/Program Files/Steam/Steam.dll'):
-    defaultleft = 'C:/Program Files/Steam/'
-    defaultright = 'N:/'
-elif os.path.isfolder('~/Library/Application Support/Steam/'):
-    defaultleft = '~/Library/Application Support/Steam/'
-    defaultright = '/'
-elif os.path.isfolder('~/.local/share/Steam'):
-    defaultleft = '~/Library/Application Support/Steam/'
-    defaultright = '/'
 
+for i in ('C:/Program Files (x86)/Steam/','C:/Program Files/Steam/',
+          '~/Library/Application Support/Steam/', '~/.local/share/Steam'):
+    configpath = os.path.join(i, 'steamapps', 'libraryfolders.vdf') #List of other libraries
+    if os.path.isfile(configpath): #Config exists
+        defaultleft = i
+        with open(configpath) as f: #Set right path
+            for line in f.readlines():
+                e = acfgetreg(line, '\d+')
+                if e and (e != defaultleft):
+                    defaultright = e
+                    break
+            else: #none found
+                defaultright = ''
+        break
+else:
+    defaultleft = ''
 
 def names(library):
     lib = library['games']
@@ -94,6 +98,7 @@ class Window:
         for side, inp, lab, lis, bar in (
             ('left', self.ltype, self.llab, self.llis, self.lbar),
             ('right', self.rtype, self.rlab, self.rlis, self.rbar)):
+          
             try:
                 self.title('Looking for %s library' % side)
                 path = getpath(inp.get())
@@ -101,8 +106,9 @@ class Window:
                 lib = buildfolder(path)
             except:
                 lib = False
-                updateitem(lab, 'No drive found!')
+                updateitem(lab, 'No drive found')
                 updateitem(lis, defaultlist)
+                self.canvas(bar, 1, [(bgcolor,0,1)])
             else:
                 updateitem(inp, path)
                 self.canvas(bar, lib['capacity'],[
@@ -273,18 +279,17 @@ class Window:
         ltype = tk.Entry(w, width=50) #Path entry
         rtype = tk.Entry(w, width=50)
 
-        ltype.insert(0, defaultleft)
-        rtype.insert(0, defaultright)
-
         ltype.bind('<Return>', lambda e: self.refresh())
         rtype.bind('<Return>', lambda e: self.refresh())
         
         ltype.grid(row=0)
         rtype.grid(row=0,column=1, columnspan=3)
 
+        ltype.insert(0, defaultleft)
+        rtype.insert(0, defaultright)
 
-        llab = tk.Label(w, text='Left drive')
-        rlab = tk.Label(w, text='Right drive')
+        llab = tk.Label(w)
+        rlab = tk.Label(w)
         
         llab.grid(row=1)
         rlab.grid(row=1,column=1, columnspan=3)
@@ -363,6 +368,8 @@ class Window:
         self.window()
         self.game = False
         self.refresh()
+        
+        
 
 if __name__ == '__main__':
     win = Window()

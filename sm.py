@@ -4,7 +4,12 @@ import shutil
 import threading
 
 # ACF property extracting regular expression.
-acfgetreg = lambda f, x: re.findall('"%s"\s+"(.+)"' % x, f)[0]
+def acfgetreg(string, key):
+    found = re.findall('"%s"\s+"(.+)"' % key, string)
+    if found:
+        return found[0]
+    else:
+        return False
 
 def dirsize(path):
     '''Gets size of given directory.'''
