@@ -1,7 +1,6 @@
 from sm import *
 import tkinter as tk
 from webbrowser import open_new_tab as web
-ask = tk.messagebox.askyesno
 
 bgcolor = '#dddddd'
 usedcolor = '#000000'
@@ -140,19 +139,19 @@ class Window:
     def op(self, typ):
         '''Do operation on game.'''
         if typ == 'delete':
-            if ask('Delete game?','Are you sure you want to delete %s (%s)?' %
+            if tk.messagebox.askyesno('Delete game?','Are you sure you want to delete %s (%s)?' %
                    (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
                 delete(self.srclib, self.game['id'])
         elif typ == 'deletesteam':
-            if ask('Delete game via Steam?','Are you sure you want to delete %s (%s) with Steam? Steam may mistake it for another copy of the game if not reloaded.' %
+            if tk.messagebox.askyesno('Delete game via Steam?','Are you sure you want to delete %s (%s) with Steam? Steam may mistake it for another copy of the game if not reloaded.' %
                    (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
                 web('steam://uninstall/%s' % self.game['id'])
         elif typ == 'move':
-            if ask('Move game?', 'Are you sure you want to move %s (%s)?' %
+            if tk.messagebox.askyesno('Move game?', 'Are you sure you want to move %s (%s)?' %
                    (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
                 move(self.srclib, self.game['id'], self.dstlib, True, self.title)
         elif typ == 'copy':
-            if ask('Copy game?', 'Are you sure you want to copy %s (%s)?' %
+            if tk.messagebox.askyesno('Copy game?', 'Are you sure you want to copy %s (%s)?' %
                    (self.game['name'], bytesize(self.game['size'])), icon='warning',default='no'):
                 move(self.srclib, self.game['id'], self.dstlib, False, self.title)
 
