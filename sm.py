@@ -29,9 +29,9 @@ def bytesize(num, binary=True):
     
     for unit in ['','K','M','G','T','P','E','Z']:
         if abs(num) < divisor:
-            return "%3.1f %s%sB" % (num,  unit, 'i'*(binary))
+            return "%3.1f %s%sB" % (num,  unit, 'i'*binary*bool(unit))
         num /= divisor
-    return "%.1f Y%sB" % (num, 'i'*(binary))
+    return "%.1f Y%sB" % (num, 'i' * binary)
 
 def buildfolder(path):
     '''Taking path to folder containing steamapps, returns stats and list of games.'''
