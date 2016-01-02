@@ -179,6 +179,7 @@ class Window:
             dstlib = self.rlib
             srclab = self.llab
             dstlab = self.rlab
+            srcnam = 'left'
             dstnam = 'right'
             srcbar = self.lbar
             dstbar = self.rbar
@@ -192,6 +193,7 @@ class Window:
             dstlab = self.llab
             srcbar = self.rbar
             dstbar = self.lbar
+            srcnam = 'right'
             dstnam = 'left'
             
         
@@ -220,8 +222,8 @@ class Window:
                        ])
             
             if remaining > 0:
-                updateitem(self.info, '%s\nSize: %s – ID: %s' % (
-                    name, bytesize(game['size']), game['id']))
+                updateitem(self.info, '%s (%s side)\nSize: %s – ID: %s' % (
+                    name, srcnam, bytesize(game['size']), game['id']))
                 self.game = game
                 self.srclib = lib
                 self.dstlib = dstlib
