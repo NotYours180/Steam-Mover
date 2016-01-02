@@ -8,7 +8,8 @@ usedcolor = '#000000'
 withcolor = '#448844'
 ohnecolor = '#ff4444'
 
-defaultlist = ["Library not found! Make sure the path", "contains both 'steam.dll' and 'steamapps'."]
+defaultlist = ["Library not found! Make sure the path", "contains both 'steam.dll' and 'steamapps'.",
+               "Not sure where it is? Try providing just 'C:/' or equivalent", "and we'll try to scan for the folder."]
 
 if os.path.isfile('C:/Program Files (x86)/Steam/Steam.dll'):
     defaultleft = 'C:/Program Files (x86)/Steam/'
@@ -42,18 +43,28 @@ def updateitem(box, item):
 def getpath(path):
     '''Attempts to resolve to Steam library path.'''
     base = os.path.basename(path)
-    downpath = os.path.join(path, 'Steam')
-    dllpath = os.path.join(path, 'steam.dll')
-    if os.path.exists(dllpath):
-        return path
-    elif base == 'steamapps':
+    if os.path.exists(os.path.join(path, 'steam.dll')):
+        pass #If DLL is present, it's valid
+    elif base == 'steamapps': #Work down directories
         path = os.path.join(path, '..')
     elif base in ('common', 'downloading', 'sourcemods', 'temp'):
         path = os.path.join(path, '..', '..')
-    elif os.path.exists(downpath):
-        path = downpath
+    else:
+        downpath = os.path.join(path, 'Steam')
+        if os.path.exists(downpath): #Try to work one up
+            path = downpath
+        else:
+            walk = os.walk(path)
+            for path_, dirs, files in walk:
+                if ('steam.dll' in files or 'Steam.dll' in files)\
+                   and 'steamapps' in dirs:
+                    path = path_
+                    break
+            else: #No result
+                return False
+        
 
-    return path
+    return os.path.realpath(path)
 
 class Window:
     def createdefault(self):
@@ -81,6 +92,7 @@ class Window:
     def refresh(self):
         '''Updates libary list'''
         try:
+            self.title('Looking for left library')
             path = getpath(self.ltype.get())
             self.title('Scanning left library')
             llib = buildfolder(path)
@@ -89,6 +101,7 @@ class Window:
             updateitem(self.llab, 'No drive found!')
             updateitem(self.llis, defaultlist)
         else:
+            updateitem(self.ltype, path)
             self.canvas(self.lbar, llib['capacity'],[
                        (bgcolor,0,llib['capacity']),(usedcolor, 0, llib['used'])])
             updateitem(self.llab, '%s (%s free)' %
@@ -97,6 +110,7 @@ class Window:
             updateitem(self.llis, sorted(names(llib)))
                         
         try:
+            self.title('Looking for right library')
             path = getpath(self.rtype.get())
             self.title('Scanning right library')
             rlib = buildfolder(path)
@@ -105,6 +119,7 @@ class Window:
             updateitem(self.rlab, 'No drive found!')
             updateitem(self.rlis, defaultlist)
         else:
+            updateitem(self.rtype, path)
             self.canvas(self.rbar, rlib['capacity'],[
                         (bgcolor,0,rlib['capacity']),(usedcolor, 0, rlib['used'])])
             updateitem(self.rlab, '%s (%s free)' %
