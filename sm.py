@@ -4,7 +4,9 @@ import shutil
 import threading
 
 def thread(func, *args, **kwargs):
-    thread = threading.Thread(target=func, args=args, kwargs=kwargs).run()
+    thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+    thread.run()
+    return thread
 
 def acfgetreg(string, key):
     '''ACF property extracting regular expression'''
@@ -140,10 +142,11 @@ def move(sender, game, library, delete=True, callback=None):
 
     copyop = Operation(srcpath, dstpath, library['path'])
     if callable(callback):
-        copyop.callback = lambda x: callback(x, 100*(copyop.copied/copyop.size))
-    thread(copyop.start)
+        copyop.callback = lambda status: callback(status, 100*(copyop.copied/copyop.size))
+    copyop.start()
 
-    callback('Copying metadata file', 100)
+    if callable(callback):
+        callback('Copying metadata file', 100)
     shutil.copy2(game['acfpath'], os.path.join(library['path'], 'steamapps')) # Copy ACF file
 
     if delete:
