@@ -102,6 +102,10 @@ class Window:
                 path = getpath(inp.get())
                 self.title('Scanning %s library' % side)
                 lib = buildfolder(path)
+                if side == 'left':
+                    self.llib = lib
+                else:
+                    self.rlib = lib
             except:
                 lib = False
                 updateitem(lab, 'No drive found')
@@ -116,24 +120,23 @@ class Window:
                            )
                 updateitem(lis, sorted(names(lib),
                             key=lambda x: x.lower().replace('the ','').replace('a ','')))
-            if side == 'left':
-                self.llib = lib
-            else:
-                self.rlib = lib
         
         self.title() # Clear title
 
     def title(self, update=None, percent=None):
         '''Update title from callback.'''
-        if percent == None:
-            if update == None:
-                self.window.title('Steam Mover')
+        if update:
+            if percent:
+                title = '%.2f%% – %s' % (percent, update)
             else:
-                self.window.title('Steam Mover – %s' % update)
-        elif percent > 99.9:
-            self.window.title('Steam Mover')
+                title = '%s' % update
+
+            self.window.title('Steam Mover – ' + title)
+            print(title.replace('Copying file ','').replace(' –',''))
+            
         else:
-            self.window.title('Steam Mover – %.2f%% – %s' %(percent, update)) 
+            self.window.title('Steam Mover')
+             
 
     def op(self, verb):
         '''Do operation on game.'''
@@ -143,10 +146,9 @@ class Window:
             if verb == 'Delete':
                 delete(self.srclib, self.game['id'])
             elif verb == 'Move':
-                move(self.srclib, self.game['id'], self.dstlib, True, self.title)
+                move(self.srclib, self.game['id'], self.dstlib, True, callback=self.title)
             elif verb == 'Copy':
-                move(self.srclib, self.game['id'], self.dstlib, False, self.title)
-            self.refresh()
+                move(self.srclib, self.game['id'], self.dstlib, False, callback=self.title)
         
     def button(self, category='move', state='normal'):
         '''Changes status for operation buttons.'''
@@ -344,10 +346,10 @@ class Window:
         
         self.game = False
         self.refresh()
-        
+        self.loop = window.mainloop
         
 
 if __name__ == '__main__':
     print('Launching...')
     win = Window()
-    win.window.mainloop()
+    win.loop()
