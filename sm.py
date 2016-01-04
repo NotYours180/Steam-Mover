@@ -5,7 +5,7 @@ import threading
 
 def thread(func, *args, **kwargs):
     thread = threading.Thread(target=func, args=args, kwargs=kwargs)
-    thread.run()
+    thread.start()
     return thread
 
 def acfgetreg(string, key):
