@@ -90,8 +90,8 @@ class Operation:
             newpath = os.path.join(self.dst, relpath) #Get destination again
             
             for file in files:
-                file = os.path.realpath(os.path.join(dirpath, file)) #Make newpath
-                thread(self._copy, file, newpath)
+                file = os.path.realpath(os.path.join(dirpath, file))
+                self._copy(file, newpath)
 
     def _status(self, status):
         '''Runs callback with status and attempts to stop divison by zero errors.'''
