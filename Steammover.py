@@ -91,7 +91,7 @@ class Window:
             right *= 300
             canvas.create_rectangle(left, 0, right, 20, fill=colour, width=0, tags='bar')
         
-    def refresh(self):
+    def refresh(self, event=None):
         '''Updates library list.'''
         for side, inp, lab, lis, bar in (
             ('left', self.ltype, self.llab, self.llis, self.lbar),
@@ -127,37 +127,56 @@ class Window:
         '''Update title from callback.'''
         if update:
             if percent:
+                self.operation = percent
                 title = '%.2f%% – %s' % (percent, update)
+                
+                
+                if (percent <= 0) or (percent >= 100) or \
+                    (percent > self.lastpercent + 0.2):
+                    self.lastpercent = percent
+                    self.window.title('Steam Mover – ' + title)
+                    print(title.replace('Copying file ','').replace(' –',''))
             else:
-                title = '%s' % update
-
-            self.window.title('Steam Mover – ' + title)
-            print(title.replace('Copying file ','').replace(' –',''))
-            
+                print(update)
+                self.window.title('Steam Mover – ' + update)
         else:
             self.window.title('Steam Mover')
              
 
     def op(self, verb):
         '''Do operation on game.'''
-        if ask.askyesno('%s game?' % verb,'Are you sure you want to %s %s (%s)?' %
+        if self.operation == False and \
+           ask.askyesno('%s game?' % verb,'Are you sure you want to %s %s (%s)?' %
                            (verb.lower(), self.game['name'], bytesize(self.game['size'])),
                             icon='warning', default='no'):
+            self.operation = 0
+            self.lastpercent = 0
+            self.button('move', False)
+            for i in (self.ltype, self.rtype):
+                i.unbind('<Return>') #Disallow refreshing during operation
+                
             if verb == 'Delete':
                 delete(self.srclib, self.game['id'])
             elif verb == 'Move':
                 move(self.srclib, self.game['id'], self.dstlib, True, callback=self.title)
             elif verb == 'Copy':
                 move(self.srclib, self.game['id'], self.dstlib, False, callback=self.title)
+
+            self.refresh()
+            
+            self.operation = False
+            self.button() #Reset movement
+            for i in (self.ltype, self.rtype):
+                i.bind('<Return>', self.refresh) #Reällow refresh
         
-    def button(self, category='move', state='normal'):
+    def button(self, category='move', state=True):
         '''Changes status for operation buttons.'''
         if category == 'move':
-            btns = (self.bcopy, self.bmove)
+            btns = (self.bcopy, self.bmove)                    
         else:
             btns = (self.bopen, self.bplay, self.bdel, self.btool)
         for i in btns:
-            i.config(state=state)
+            i.config(state=['disabled', 'active'][state])
 
     def tools(self):
         '''Opens tools popup menu'''
@@ -235,7 +254,7 @@ class Window:
                         (withcolor, dstlib['used'], dstlib['used'] + game['size'])
                         ])
         else:
-            self.button('move', 'disabled') #Disallow movement buttons
+            self.button('move', False) #Disallow movement buttons
             
             updateitem(self.info, '%s\nSize: %s – %s more needed on %s library' % (
                 name, bytesize(game['size']), bytesize(needed), dstnam))
@@ -256,8 +275,8 @@ class Window:
         ltype = tk.Entry(window, width=50)
         rtype = tk.Entry(window, width=50)
 
-        ltype.bind('<Return>', lambda e: self.refresh())
-        rtype.bind('<Return>', lambda e: self.refresh())
+        ltype.bind('<Return>', self.refresh)
+        rtype.bind('<Return>', self.refresh)
         
         ltype.grid(row=0)
         rtype.grid(row=0,column=1, columnspan=3)
@@ -294,13 +313,13 @@ class Window:
         info.grid(row=4, rowspan=2)
 
         #Buttons
-        bcopy = tk.Button(window, text='Copy', command=lambda: self.op('Copy'), state='disabled')
+        bcopy = tk.Button(window, text='Copy', command=lambda: thread(self.op, 'Copy'), state='disabled')
         bcopy.grid(row=4, column=1, sticky='nwe')
         
-        bmove = tk.Button(window, text='Move', command=lambda: self.op('Move'), state='disabled')
+        bmove = tk.Button(window, text='Move', command=lambda: thread(self.op, 'Move'), state='disabled')
         bmove.grid(row=4, column=2, sticky='nwe')
 
-        bdel = tk.Button(window, text='Delete', command=lambda: self.op('Delete'), state='disabled')
+        bdel = tk.Button(window, text='Delete', command=lambda: thread(self.op, 'Delete'), state='disabled')
         bdel.grid(row=4, column=3, sticky='nwe')
 
         btool = tk.Button(window, text='Tools...', command=self.tools, state='disabled', )
@@ -345,7 +364,8 @@ class Window:
         self.btool = btool
         
         self.game = False
-        self.refresh()
+        self.operation = False # If true, don't do other operations!
+        thread(self.refresh)
         self.loop = window.mainloop
         
 
