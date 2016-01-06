@@ -1,7 +1,26 @@
+version = 1.0 #Release version
+# Version 1.0: release
+
 from sm import *
 import tkinter as tk
 import tkinter.messagebox as ask
 from webbrowser import open_new_tab as web
+import urllib.request
+
+thiscodeurl = 'https://raw.githubusercontent.com/yunruse/Steam-Mover/master/Steammover.py'
+def checkupdate():
+    try:
+        data = urllib.request.urlopen(thiscodeurl).read().decode()
+    except urllib.error.HTTPError: #Not found, or not present
+        return False, ''
+    regex = re.findall('version = ([0-9\.]+) #(.+)\n', data)
+    if regex:
+        ver, log = regex[0]
+        if ver > version:
+            return ver, log
+    else:
+        return False, ''
+        
 
 bgcolor = '#dddddd'
 usedcolor = '#000000'
@@ -10,6 +29,8 @@ ohnecolor = '#ff4444'
 
 defaultlist = ["Library not found.",
         "Not sure where it is? Try providing a home path", "and we'll try to scan for a library."]
+
+
 
 
 for i in ('C:/Program Files (x86)/Steam/','C:/Program Files/Steam/',
@@ -76,6 +97,12 @@ def getpath(path):
 
 class Window:
     '''Steam Mover default window'''
+    def checkupdate(self):
+        '''Checks for update'''
+        ver, log = checkupdate()
+        if ver:
+            if ask.askyesno('A new update is available!', 'Update %s is available (you are on %s.) Download? In this update:\n%s' % (ver, version, log)):
+                web('https://github.com/yunruse/Steam-Mover/')
     def canvas(self, canvas, cap, col):
         '''Update CANVAS with x proportional to CAP. COL is a list of (colour, x1, x2).'''
         canvas.delete('bar')
@@ -365,7 +392,10 @@ class Window:
         
         self.game = False
         self.operation = False # If true, don't do other operations!
-        thread(self.refresh)
+        def start():
+            self.refresh()
+            self.checkupdate() #Make sure it's after refreshing
+        thread(start)
         self.loop = window.mainloop
         
 
