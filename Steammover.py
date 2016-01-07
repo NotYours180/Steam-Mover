@@ -103,6 +103,7 @@ class Window:
     '''Steam Mover default window'''
     def checkupdate(self):
         '''Checks for update'''
+        self.title('Checking for updates...')
         ver, log = checkupdate()
         if ver:
             self.title('Update found!')
@@ -128,6 +129,7 @@ class Window:
         
     def refresh(self, event=None):
         '''Updates library list.'''
+        updateitem(self.info, 'No game selected. Double-click one from either library.')
         for side, inp, lab, lis, bar in (
             ('left', self.ltype, self.llab, self.llis, self.lbar),
             ('right', self.rtype, self.rlab, self.rlis, self.rbar)):
@@ -154,7 +156,7 @@ class Window:
                            (bytesize(lib['capacity']), bytesize(lib['free']))
                            )
                 updateitem(lis, sorted(names(lib),
-                            key=lambda x: x.lower().replace('the ','').replace('a ','')))
+                            key = lambda x: x.lower().replace('the ','').replace('a ','')))
         
         self.title() # Clear title
 
@@ -356,34 +358,34 @@ class Window:
         rlis.bind('<Double-Button-1>', lambda e: self.select('r'))
 
         #Information label
-        info = tk.Label(window, text='No game selected. Doubleclick one from either library.', width=42)
+        info = tk.Label(window, text='No game selected. Double-click one from either library.', width=42)
         info.grid(row=4, rowspan=2)
 
         #Buttons
-        bcopy = tk.Button(window, text='Copy', command=lambda: thread(self.op, 'Copy'), state='disabled')
+        bcopy = tk.Button(window, text='Copy', command = lambda: thread(self.op, 'Copy'), state='disabled')
         bcopy.grid(row=4, column=1, sticky='nwe')
         
-        bmove = tk.Button(window, text='Move', command=lambda: thread(self.op, 'Move'), state='disabled')
+        bmove = tk.Button(window, text='Move', command = lambda: thread(self.op, 'Move'), state='disabled')
         bmove.grid(row=4, column=2, sticky='nwe')
 
-        bdel = tk.Button(window, text='Delete', command=lambda: thread(self.op, 'Delete'), state='disabled')
+        bdel = tk.Button(window, text='Delete', command = lambda: thread(self.op, 'Delete'), state='disabled')
         bdel.grid(row=4, column=3, sticky='nwe')
 
-        btool = tk.Button(window, text='Tools...', command=self.tools, state='disabled', )
+        btool = tk.Button(window, text='Tools...', command = self.tools, state='disabled')
         btool.grid(row=5, column=1, sticky='nwe')
         
-        bopen = tk.Button(window, text='Open folder', command=lambda: os.startfile(self.game['path']), state='disabled')
+        bopen = tk.Button(window, text='Open folder', command = lambda: os.startfile(self.game['path']), state='disabled')
         bopen.grid(row=5, column=2, sticky='nwe')
 
-        bplay = tk.Button(window, text='Play game', command=lambda: web('steam://run/%s' % self.game['id']), state='disabled')
+        bplay = tk.Button(window, text='Play game', command = lambda: web('steam://run/%s' % self.game['id']), state='disabled')
         bplay.grid(row=5, column=3, sticky='nwe')
 
         #Menu bar
         menu = tk.Menu(window, tearoff=0)
         menu.add_command(label='Refresh libraries', command = self.refresh)
-        menu.add_command(label='Check for updates', command = self.checkupdate)
+        menu.add_command(label='Check for updates', command = lambda: thread(self.checkupdate))
         menu.add_command(label='Toggle drive display', command = self.toggledrive)
-        menu.add_command(label='About', command=lambda: ask.showinfo('Steam Mover v%s' % version, 'Yee'))
+        menu.add_command(label='About...', command = lambda: ask.showinfo('Steam Mover version %s' % version, 'Copyright © 2016 Ami yun Ruse @yunruse. See LICENSE for legal stuff.'))
         window.config(menu=menu)
 
         #Tools menu popup
@@ -426,6 +428,5 @@ class Window:
         
 
 if __name__ == '__main__':
-    print('Launching...')
     win = Window()
     win.loop()
