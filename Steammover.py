@@ -6,8 +6,10 @@ import tkinter as tk
 import tkinter.messagebox as ask
 from webbrowser import open_new_tab as web
 import urllib.request
+import glob
 
 thiscodeurl = 'https://raw.githubusercontent.com/yunruse/Steam-Mover/master/Steammover.py'
+
 def checkupdate():
     try:
         data = urllib.request.urlopen(thiscodeurl).read().decode()
@@ -16,8 +18,10 @@ def checkupdate():
     regex = re.findall('version = ([0-9\.]+) #(.+)\n', data)
     if regex:
         ver, log = regex[0]
-        if ver > version:
+        if float(ver) > version:
             return ver, log
+        else:
+            return False, ''
     else:
         return False, ''
         
@@ -101,8 +105,12 @@ class Window:
         '''Checks for update'''
         ver, log = checkupdate()
         if ver:
+            self.title('Update found!')
             if ask.askyesno('A new update is available!', 'Update %s is available (you are on %s.) Download? In this update:\n%s' % (ver, version, log)):
                 web('https://github.com/yunruse/Steam-Mover/')
+        else:
+            self.title('No updates found')
+        
     def canvas(self, canvas, cap, col):
         '''Update CANVAS with x proportional to CAP. COL is a list of (colour, x1, x2).'''
         canvas.delete('bar')
@@ -212,6 +220,16 @@ class Window:
             y = self.window.winfo_rooty() + self.btool.winfo_y()
             self.popup.tk_popup(x,y, 0)
 
+    def toggledrive(self):
+        self.title()
+        for i in (self.llab, self.rlab, self.lbar, self.rbar):
+            if self.showdrives:
+                i.grid_remove()
+            else:
+                i.grid()
+        self.showdrives = not self.showdrives
+            
+        
     def select(self, side):
         if side == 'l':
             if not self.llib:
@@ -325,6 +343,8 @@ class Window:
         lbar.grid(row=2)
         rbar.grid(row=2,column=1, columnspan=3)
 
+        self.showdrives = True
+
         #Lists of games
         llis = tk.Listbox(window, width=50)
         rlis = tk.Listbox(window, width=50)
@@ -357,6 +377,14 @@ class Window:
 
         bplay = tk.Button(window, text='Play game', command=lambda: web('steam://run/%s' % self.game['id']), state='disabled')
         bplay.grid(row=5, column=3, sticky='nwe')
+
+        #Menu bar
+        menu = tk.Menu(window, tearoff=0)
+        menu.add_command(label='Refresh libraries', command = self.refresh)
+        menu.add_command(label='Check for updates', command = self.checkupdate)
+        menu.add_command(label='Toggle drive display', command = self.toggledrive)
+        menu.add_command(label='About', command=lambda: ask.showinfo('Steam Mover v%s' % version, 'Yee'))
+        window.config(menu=menu)
 
         #Tools menu popup
         popup = tk.Menu(window, tearoff=0)
@@ -392,10 +420,8 @@ class Window:
         
         self.game = False
         self.operation = False # If true, don't do other operations!
-        def start():
-            self.refresh()
-            self.checkupdate() #Make sure it's after refreshing
-        thread(start)
+
+        thread(self.refresh)
         self.loop = window.mainloop
         
 
