@@ -1,4 +1,4 @@
-version = 1.0 #Release version
+version = 1.1 #Add library-cleaning resources
 # Version 1.0: release
 
 from sm import *
@@ -6,7 +6,6 @@ import tkinter as tk
 import tkinter.messagebox as ask
 from webbrowser import open_new_tab as web
 import urllib.request
-import glob
 
 thiscodeurl = 'https://raw.githubusercontent.com/yunruse/Steam-Mover/master/Steammover.py'
 
@@ -24,7 +23,6 @@ def checkupdate():
             return False, ''
     else:
         return False, ''
-        
 
 bgcolor = '#dddddd'
 usedcolor = '#000000'
@@ -34,6 +32,7 @@ ohnecolor = '#ff4444'
 defaultlist = ["Library not found.",
         "Not sure where it is? Try providing a home path", "and we'll try to scan for a library."]
 
+redundantfolders = ['DotNet', '_CommonRedist', 'directX', 'vcredist']
 
 
 
@@ -90,14 +89,61 @@ def getpath(path):
         else:
             walk = os.walk(path)
             for path_, dirs, files in walk:
-                if ('steam.dll' in files or 'Steam.dll' in files)\
-                   and 'steamapps' in dirs:
+                if ('steam.dll' in files or 'Steam.dll' in files) and 'steamapps' in dirs:
                     path = path_
                     break
             else: #No result
                 return False
     
     return os.path.realpath(path)
+
+
+
+class DriveClean:
+    def __init__(self, main):
+        self.main = main
+        window = self.window = tk.Toplevel(main.window)
+        window.resizable(0,0)
+        window.protocol('WM_DELETE_WINDOW', self.hide)
+        window.title('Clean up drives')
+        self.hide()
+
+        tk.Label(window, text="Steam Mover can attempt to remove some redundant files (like\nDirectX installation files.) If you clean a drive with a game you\nhaven't run yet, try verifyïng its cache (Tools > verify cache)\nto get them back.",                 width=50).grid()
+
+        self.path = tk.Entry(window)
+        self.path.grid(row=1, sticky='we')
+        self.path.bind('<Return>', self.clean)
+
+        tk.Button(window, text='Clean library', command=self.clean).grid(row=2, sticky='we')
+
+    def clean(self, event=None):
+        path = getpath(self.path.get())
+        if not path:
+            return None
+        path = os.path.join(path, 'steamapps', 'common')
+        deleted = 0
+        
+        for paths, folders, files in os.walk(path):
+            for f in folders:
+                if f in redundantfolders:
+                    f = os.path.join(paths, f)
+                    deleted += dirsize(f)
+                    shutil.rmtree(f)
+        
+
+        self.main.title('%s saved' % bytesize(deleted))
+
+    def show(self):
+        self.window.deiconify()
+        self.window.lift()
+        updateitem(self.path, self.main.ltype.get())
+
+    __call__ = show
+
+    def hide(self):
+        self.window.state('withdrawn')
+
+
 
 class Window:
     '''Steam Mover default window'''
@@ -312,7 +358,7 @@ class Window:
                         ])
 
     def __init__(self):
-        window = tk.Tk()
+        self.window = window = tk.Tk()
         window.resizable(0,1)
         window.minsize(600,300)
 
@@ -380,10 +426,13 @@ class Window:
         bplay = tk.Button(window, text='Play game', command = lambda: web('steam://run/%s' % self.game['id']), state='disabled')
         bplay.grid(row=5, column=3, sticky='nwe')
 
+        self.drivewin = DriveClean(self)
+        
         #Menu bar
         menu = tk.Menu(window, tearoff=0)
         menu.add_command(label='Refresh libraries', command = self.refresh)
         menu.add_command(label='Check for updates', command = lambda: thread(self.checkupdate))
+        menu.add_command(label='Free drive space...', command = self.drivewin.show)
         menu.add_command(label='Toggle drive display', command = self.toggledrive)
         menu.add_command(label='About...', command = lambda: ask.showinfo('Steam Mover version %s' % version, 'Copyright © 2016 Ami yun Ruse @yunruse. See LICENSE for legal stuff.'))
         window.config(menu=menu)
@@ -402,7 +451,6 @@ class Window:
 
         popup.add_cascade(label='Visit...', menu=visit)
 
-        self.window = window
         self.ltype = ltype
         self.rtype = rtype
         self.llab = llab
@@ -420,8 +468,12 @@ class Window:
         self.bplay = bplay
         self.btool = btool
         
+        
+        
         self.game = False
         self.operation = False # If true, don't do other operations!
+
+        
 
         thread(self.refresh)
         self.loop = window.mainloop
