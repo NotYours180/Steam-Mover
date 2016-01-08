@@ -1,4 +1,5 @@
-version = 1.1 #Add library-cleaning resources
+version = 1.11 #Upgrade Library Cleaner's capabilities
+# Version 1.1: Add library-cleaning resources
 # Version 1.0: release
 
 from sm import *
@@ -32,7 +33,10 @@ ohnecolor = '#ff4444'
 defaultlist = ["Library not found.",
         "Not sure where it is? Try providing a home path", "and we'll try to scan for a library."]
 
-redundantfolders = ['DotNet', '_CommonRedist', 'directX', 'vcredist']
+redundantfolders = ['dotnet', '_commonredist', '.*directx.*', 'dotnetfx' 'redist', 'dependencies',
+                     'directx_redist', 'vcredist.*', 'installers', 'dxmin']
+
+redundantfiles = ['.*redist\.msi', '.*dotNet.*\.exe']
 
 
 
@@ -105,35 +109,76 @@ class DriveClean:
         window = self.window = tk.Toplevel(main.window)
         window.resizable(0,0)
         window.protocol('WM_DELETE_WINDOW', self.hide)
-        window.title('Clean up drives')
         self.hide()
 
         tk.Label(window, text="Steam Mover can attempt to remove some redundant files (like\nDirectX installation files.) If you clean a drive with a game you\nhaven't run yet, try verifyïng its cache (Tools > verify cache)\nto get them back.",                 width=50).grid()
 
         self.path = tk.Entry(window)
         self.path.grid(row=1, sticky='we')
-        self.path.bind('<Return>', self.clean)
+        self.path.bind('<Return>', lambda e: thread(self.clean))
 
-        tk.Button(window, text='Clean library', command=self.clean).grid(row=2, sticky='we')
+        self.button = tk.Button(window, text='Clean library', command=lambda: thread(self.clean))
+        self.button.grid(row=2, sticky='we')
+
+        self.doing = False #No operation in progress
 
     def clean(self, event=None):
-        path = getpath(self.path.get())
-        if not path:
+        self.title() #Clear title
+        if self.doing:
             return None
+        
+        inp = self.path.get()
+        path = getpath(inp)
+        if not path:
+            print("Can't find library at path '%s'" % inp)
+            self.title("can't find library")
+            return None
+
+        self.button.config(state='disabled')
+        self.doing = True
+        
         path = os.path.join(path, 'steamapps', 'common')
-        deleted = 0
+        size = dirsize(path)
         
         for paths, folders, files in os.walk(path):
             for f in folders:
-                if f in redundantfolders:
-                    f = os.path.join(paths, f)
-                    deleted += dirsize(f)
-                    shutil.rmtree(f)
+                for i in redundantfolders:
+                    match = re.findall(i, f.lower())
+                    if match:
+                        f = os.path.join(paths, match[0])
+                        if os.path.isdir(f):
+                            self.title(os.path.relpath(f, path))
+                            shutil.rmtree(f)
+            for f in files:
+                for i in redundantfiles:
+                    match = re.findall(i, f.lower())
+                    if match:
+                        f = os.path.join(paths, match[0])
+                        if os.path.isfile(f):
+                            self.title(os.path.relpath(f, path))
+                            os.remove(f)
+
+        
+        deleted = abs(size - dirsize(path))        
+        if deleted:
+            print('%s saved from %s' % (bytesize(deleted), path))
+            self.title('%s saved' % bytesize(deleted))
+        else:
+            print('%s has no redundant files' % path)
+            self.title('Already clean :D')
+
+        self.doing = False
+        self.button.config(state='active')
         
 
-        self.main.title('%s saved' % bytesize(deleted))
+    def title(self, text=None):
+        if text:
+            self.window.title('Library Cleaner – %s' % text)
+        else:
+            self.window.title('Library Cleaner')
 
     def show(self):
+        self.title()
         self.window.deiconify()
         self.window.lift()
         updateitem(self.path, self.main.ltype.get())
@@ -432,7 +477,7 @@ class Window:
         menu = tk.Menu(window, tearoff=0)
         menu.add_command(label='Refresh libraries', command = self.refresh)
         menu.add_command(label='Check for updates', command = lambda: thread(self.checkupdate))
-        menu.add_command(label='Free drive space...', command = self.drivewin.show)
+        menu.add_command(label='Library Cleaner...', command = self.drivewin.show)
         menu.add_command(label='Toggle drive display', command = self.toggledrive)
         menu.add_command(label='About...', command = lambda: ask.showinfo('Steam Mover version %s' % version, 'Copyright © 2016 Ami yun Ruse @yunruse. See LICENSE for legal stuff.'))
         window.config(menu=menu)
