@@ -18,6 +18,9 @@ def acfgetreg(string, key):
 
 def dirsize(path):
     '''Gets size of given directory.'''
+    if os.path.isfile(path):
+        return os.path.getsize(path)
+    
     total = 0
     for dirpath, dirs, files in os.walk(path):
         for file in files:
