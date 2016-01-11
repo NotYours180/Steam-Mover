@@ -58,7 +58,7 @@ for i in ('C:/Program Files (x86)/Steam/','C:/Program Files/Steam/',
                 defaultright = ''
         break
 else:
-    defaultleft = ''
+    defaultright = defaultleft = ''
 
 def names(library):
     '''For a library, returns a list of names.'''
