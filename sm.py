@@ -25,7 +25,10 @@ def dirsize(path):
     for dirpath, dirs, files in os.walk(path):
         for file in files:
             file = os.path.join(dirpath, file)
-            total += os.path.getsize(file)
+            try:
+                total += os.path.getsize(file)
+            except OSError:
+                pass
     return total
 
 def bytesize(num, binary=True):
@@ -41,27 +44,29 @@ def bytesize(num, binary=True):
         num /= divisor
     return "%.1f Y%sB" % (num, 'i' * binary)
 
-def buildfolder(path):
-    '''Taking path to folder containing steamapps, returns stats and list of games.'''
-    total, used, free = shutil.disk_usage(path)
-    games = {}
+def getpath(path):
+    '''Attempts to resolve to Steam library path.'''
+    base = os.path.basename(path)
+    if os.path.exists(os.path.join(path, 'steam.dll')):
+        pass #If DLL is present, it's valid
+    elif base == 'steamapps': #Work down directories
+        path = os.path.join(path, '..')
+    elif base in ('common', 'downloading', 'sourcemods', 'temp'):
+        path = os.path.join(path, '..', '..')
+    else:
+        downpath = os.path.join(path, 'Steam')
+        if os.path.exists(downpath): #Try to work one up
+            path = downpath
+        else:
+            walk = os.walk(path)
+            for path_, dirs, files in walk:
+                if ('steam.dll' in files or 'Steam.dll' in files) and 'steamapps' in dirs:
+                    path = path_
+                    break
+            else: #No result
+                return False
     
-    games_path = os.path.join(path, 'steamapps')
-    files = [x for x in os.listdir(games_path)
-             if re.findall('appmanifest_\d+.acf', x)] #List of valid ACF files.
-    
-    for acfname in files:
-        acfpath = os.path.join(games_path, acfname)
-        f = ''.join(open(acfpath).readlines())
-        
-        gamepath = os.path.join(games_path, 'common', acfgetreg(f, 'installdir'))
-        size = dirsize(gamepath)
-        gameid = re.findall('appmanifest_(\d+).acf', acfname)[0] #First result = ID
-        name = acfgetreg(f, 'name')
-
-        games[gameid] = {'name': name, 'size': size, 'path': gamepath, 'acfpath': acfpath, 'id': gameid}
-
-    return {'path': path, 'capacity': total, 'free': free, 'used': used, 'games': games}
+    return os.path.realpath(path)
 
 
 class Operation:
@@ -122,20 +127,11 @@ class Operation:
         self.copied = 0 # Bytes copied
 
 
-def move(sender, game, library, delete=True, callback=None):
-    '''Moves game with ID `game` from library `sender` to `library`. If `delete` is true, deletes original copy.
+def move(sender, game, library, callback=None):
+    '''Moves game with ID `game` from library `sender` to `library`.
     If callback is set, every operation done does callback(statusmsg, percentdone)'''
-    
-    assert library['path'] != sender['path'], 'The libraries are identical.'
-    
-    game = sender['games'][str(game)]
 
-    needed = game['size'] - library['free'] #Needed in destination drive to move. If below zero, can copy.
-    
-    assert needed < 0, (
-           'You need more space (%s) on the recipient drive to copy all of the game.' % bytesize(needed))
-
-    srcpath = game['path']
+    srcpath = os.path.join(sender['path'], game['path'])
     gamepath = os.path.basename(game['path']) # Name of folder
     dstpath = os.path.join(library['path'], 'steamapps', 'common', gamepath)
 
@@ -154,19 +150,17 @@ def move(sender, game, library, delete=True, callback=None):
 
     if delete:
         callback('Deleting original files', 100)
-        shutil.rmtree(game['path'])
-        os.remove(game['acfpath'])
+        delete(game)
 
 
-def delete(library, ID):
-    '''Deletes game with ID from library. No callback.'''
-    game = library['games'][str(ID)]
+def delete(library, game):
+    '''Deletes GAME from LIBRARY. No callback.'''
 
-    path = os.path.realpath(game['path'])
-    acfpath = os.path.realpath(game['acfpath'])
-
+    path = os.path.join(library['path'], game['path'])
     if os.path.exists(path):
         shutil.rmtree(path)
+        
+    acfpath = os.path.join(path, os.pardir, os.pardir, 'appmanifest_%s.acf' % game['id'])
     if os.path.exists(acfpath):
         os.remove(acfpath)
     

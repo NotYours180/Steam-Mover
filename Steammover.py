@@ -2,7 +2,12 @@ version = 1.11 #Upgrade Library Cleaner's capabilities
 # Version 1.1: Add library-cleaning resources
 # Version 1.0: release
 
-from sm import *
+import sm
+import re
+import os
+import shutil
+thread = sm.thread
+
 import tkinter as tk
 import tkinter.messagebox as ask
 from webbrowser import open_new_tab as web
@@ -48,22 +53,18 @@ for i in ('C:/Program Files (x86)/Steam/','C:/Program Files/Steam/',
         defaultleft = i
         with open(configpath) as f: #Set right path:
             for line in f.readlines():
-                e = acfgetreg(line, '\d+') #Scan lines for numbered paths indicating libraries 
-                if e:
-                    e = os.path.realpath(e).replace('\\\\','\\') #Normalise escapes
-                    if e != defaultleft:
-                        defaultright = e
+                result = re.findall('"\d+"\s+"(.+)"', line) #Scan lines for numbered paths indicating libraries 
+                if result:
+                    result = result[0]
+                    result = os.path.realpath(result).replace('\\\\','\\') #Normalise escapes
+                    if result != defaultleft:
+                        defaultright = result
                         break
             else: #none found
                 defaultright = ''
         break
 else:
     defaultleft = ''
-
-def names(library):
-    '''For a library, returns a list of names.'''
-    lib = library['games']
-    return [lib[x]['name'] for x in lib] 
 
 def updateitem(box, item):
     '''Updates a tkinter item with given text or iterable.'''
@@ -76,32 +77,6 @@ def updateitem(box, item):
         else:
             for i in item:
                 box.insert('end', i)
-
-def getpath(path):
-    '''Attempts to resolve to Steam library path.'''
-    base = os.path.basename(path)
-    if os.path.exists(os.path.join(path, 'steam.dll')):
-        pass #If DLL is present, it's valid
-    elif base == 'steamapps': #Work down directories
-        path = os.path.join(path, '..')
-    elif base in ('common', 'downloading', 'sourcemods', 'temp'):
-        path = os.path.join(path, '..', '..')
-    else:
-        downpath = os.path.join(path, 'Steam')
-        if os.path.exists(downpath): #Try to work one up
-            path = downpath
-        else:
-            walk = os.walk(path)
-            for path_, dirs, files in walk:
-                if ('steam.dll' in files or 'Steam.dll' in files) and 'steamapps' in dirs:
-                    path = path_
-                    break
-            else: #No result
-                return False
-    
-    return os.path.realpath(path)
-
-
 
 class DriveClean:
     def __init__(self, main):
@@ -138,7 +113,7 @@ class DriveClean:
         self.doing = True
         
         path = os.path.join(path, 'steamapps', 'common')
-        size = dirsize(path)
+        size = sm.dirsize(path)
         
         for paths, folders, files in os.walk(path):
             for f in folders:
@@ -159,10 +134,10 @@ class DriveClean:
                             os.remove(f)
 
         
-        deleted = abs(size - dirsize(path))        
+        deleted = abs(size - sm.dirsize(path))        
         if deleted:
-            print('%s saved from %s' % (bytesize(deleted), path))
-            self.title('%s saved' % bytesize(deleted))
+            print('%s saved from %s' % (sm.bytesize(deleted), path))
+            self.title('%s saved' % sm.bytesize(deleted))
         else:
             print('%s has no redundant files' % path)
             self.title('Already clean :D')
@@ -187,6 +162,7 @@ class DriveClean:
 
     def hide(self):
         self.window.state('withdrawn')
+
 
 
 
@@ -218,36 +194,66 @@ class Window:
             right *= 300
             canvas.create_rectangle(left, 0, right, 20, fill=colour, width=0, tags='bar')
         
-    def refresh(self, event=None):
-        '''Updates library list.'''
+    def getlibrary(self, side):
+        '''Fetches library of given side ('l' or 'r')'''
         updateitem(self.info, 'No game selected. Double-click one from either library.')
-        for side, inp, lab, lis, bar in (
+        side, inp, lab, lis, bar = (
             ('left', self.ltype, self.llab, self.llis, self.lbar),
-            ('right', self.rtype, self.rlab, self.rlis, self.rbar)):
-          
-            try:
-                self.title('Looking for %s library' % side)
-                path = getpath(inp.get())
-                self.title('Scanning %s library' % side)
-                lib = buildfolder(path)
-                if side == 'left':
-                    self.llib = lib
-                else:
-                    self.rlib = lib
-            except:
-                lib = False
-                updateitem(lab, 'No drive found')
-                updateitem(lis, defaultlist)
-                self.canvas(bar, 1, [(bgcolor,0,1)])
-            else:
-                updateitem(inp, path)
-                self.canvas(bar, lib['capacity'],[
-                           (bgcolor,0,lib['capacity']),(usedcolor, 0, lib['used'])])
-                updateitem(lab, '%s (%s free)' %
-                           (bytesize(lib['capacity']), bytesize(lib['free']))
-                           )
-                updateitem(lis, sorted(names(lib),
-                            key = lambda x: x.lower().replace('the ','').replace('a ','')))
+            ('right', self.rtype, self.rlab, self.rlis, self.rbar))[side == 'r']
+        
+        self.title('Finding %s library' % side)
+        path = sm.getpath(inp.get())
+        updateitem(inp, path)
+        
+        if path:
+            gamespath = os.path.join(path, 'steamapps')
+            self.title('Scanning %s library' % side)
+            capacity, used, free = shutil.disk_usage(path)
+
+            games = [] # List of library's game IDs.
+            
+            for i in os.listdir(gamespath):
+                if not (i.endswith('.acf') and i.startswith('appmanifest_')):
+                    continue
+                ID = i[12:-4]
+                if not ID in self.sources:
+                    acfpath = os.path.join(gamespath, i)
+                    with open(acfpath) as f:
+                        f = f.readlines()
+                        for line in f:
+                            if 'installdir' in line:
+                                gamepath = re.findall('"installdir"\s+"(.+)"', line)[0]
+                                gamepath = os.path.join(gamespath, 'common', gamepath)
+                            elif 'name' in line:
+                                name = re.findall('"name"\s+"(.+)"', line)[0]
+                    
+                    self.sources[ID] = {'name': name, 'path': gamepath}
+                    
+                games.append(ID)
+                
+                
+            lib = {'capacity': capacity, 'free': free, 'used': used, 'games': games}
+
+            self.canvas(bar, capacity, [
+                       (bgcolor, 0, capacity),(usedcolor, 0, used)])
+            updateitem(lab, '%s (%s free)' %
+                       (sm.bytesize(capacity), sm.bytesize(free)))
+            
+            names = [self.sources[ID]['name'] for ID in games]
+            updateitem(lis, sorted(names,
+                        key = lambda x: x.lower().replace('the ','').replace('a ','')))
+            
+        else:
+            lib = False
+            updateitem(lab, 'No drive found')
+            updateitem(lis, defaultlist)
+            self.canvas(bar, 1, [(bgcolor,0,1)])
+
+        
+        if side == 'right':
+            self.rlib = lib
+        else:
+             self.llib = lib
         
         self.title() # Clear title
 
@@ -273,24 +279,39 @@ class Window:
 
     def op(self, verb):
         '''Do operation on game.'''
+        ID = self.game
+        game = self.sources[ID]
         if self.operation == False and \
-           ask.askyesno('%s game?' % verb,'Are you sure you want to %s %s (%s)?' %
-                           (verb.lower(), self.game['name'], bytesize(self.game['size'])),
+           ask.askyesno('%s game?' % verb,'Are you sure you want to %s %s?' %
+                           (verb.lower(), self.sourcesgame['name']),
                             icon='warning', default='no'):
             self.operation = 0
             self.lastpercent = 0
             self.button('move', False)
             for i in (self.ltype, self.rtype):
                 i.unbind('<Return>') #Disallow refreshing during operation
-                
-            if verb == 'Delete':
-                delete(self.srclib, self.game['id'])
-            elif verb == 'Move':
-                move(self.srclib, self.game['id'], self.dstlib, True, callback=self.title)
-            elif verb == 'Copy':
-                move(self.srclib, self.game['id'], self.dstlib, False, callback=self.title)
 
-            self.refresh()
+            if verb != 'Delete':
+                sm.move(self.srclib, self.game, self.dstlib, callback=self.title)
+                self.dstlib.append(ID)
+
+            if verb == 'Move':
+                self.title('Deleting original files', 100)
+            
+            if verb != 'Copy':
+                sm.delete(self.srclib, game)
+                self.srclib.remove(ID)
+
+            for lib, lab, lis, bar in ((self.llib, self.llab, self.llis, self.lbar),
+                                       (self.llib, self.llab, self.llis, self.lbar)):
+                self.canvas(bar, capacity, [
+                       (bgcolor, 0, capacity),(usedcolor, 0, used)])
+                updateitem(lab, '%s (%s free)' %
+                       (sm.bytesize(capacity), sm.bytesize(free)))
+            
+                names = [self.sources[ID]['name'] for ID in games]
+                updateitem(lis, sorted(names,
+                        key = lambda x: x.lower().replace('the ','').replace('a ','')))
             
             self.operation = False
             self.button() #Reset movement
@@ -336,17 +357,21 @@ class Window:
             selectedgame = self.rlis.get('active')
             
         for g in lib['games']:
-            if lib['games'][g]['name'] == selectedgame:
-                game = lib['games'][g]
+            if self.sources[g]['name'] == selectedgame:
+                game = self.sources[g]
+                ID = g
                 break
         else:
             updateitem(self.info, 'No game selected.')
-            return None            
+            return None
 
         #Rest of block relies on game existing, naturally
 
         self.button('misc') #Allow single-library buttons
         self.game = game
+
+        
+        size = sm.dirsize(game['path'])
         
         if side == 'l':
             dstlib = self.rlib
@@ -369,12 +394,12 @@ class Window:
         if len(name) > 50:
             name = name[:50] + '...' #Truncate name for display
         
-        needed = game['size'] - dstlib['free'] #Bytes needed on other drive
+        needed = size - dstlib['free'] #Bytes needed on other drive
 
         #Update canvas for own game showing space taken
         self.canvas(srcbar, lib['capacity'],[
                    (bgcolor,0,lib['capacity']),(usedcolor, 0, lib['used']),
-                   (ohnecolor, lib['used'] - game['size'], lib['used'])
+                   (ohnecolor, lib['used'] - size, lib['used'])
                    ])
         
         
@@ -385,24 +410,25 @@ class Window:
             self.button() #Allow movement to other library
 
             updateitem(self.info, '%s (%s side)\nSize: %s – ID: %s' % (
-                name, srcnam, bytesize(game['size']), game['id']))
+                name, srcnam, sm.bytesize(size), ID))
 
             self.canvas(dstbar, dstlib['capacity'],[
-                        (bgcolor,0, dstlib['capacity']), (usedcolor, 0, dstlib['used']),
-                        (withcolor, dstlib['used'], dstlib['used'] + game['size'])
+                        (bgcolor, 0, dstlib['capacity']), (usedcolor, 0, dstlib['used']),
+                        (withcolor, dstlib['used'], dstlib['used'] + size)
                         ])
         else:
             self.button('move', False) #Disallow movement buttons
             
             updateitem(self.info, '%s\nSize: %s – %s more needed on %s library' % (
-                name, bytesize(game['size']), bytesize(needed), dstnam))
+                name, sm.bytesize(size), sm.bytesize(needed), dstnam))
             
             self.canvas(dstbar, dstlib['capacity'],[
                         (ohnecolor, 0, dstlib['capacity']),
                         (usedcolor, 0, dstlib['used'])
                         ])
 
-    def __init__(self):
+
+    def __init__(self):            
         self.window = window = tk.Tk()
         window.resizable(0,1)
         window.minsize(600,300)
@@ -413,8 +439,8 @@ class Window:
         ltype = tk.Entry(window, width=50)
         rtype = tk.Entry(window, width=50)
 
-        ltype.bind('<Return>', self.refresh)
-        rtype.bind('<Return>', self.refresh)
+        ltype.bind('<Return>', lambda e: self.getlibrary('l'))
+        rtype.bind('<Return>', lambda e: self.getlibrary('r'))
         
         ltype.grid(row=0)
         rtype.grid(row=0,column=1, columnspan=3)
@@ -475,7 +501,7 @@ class Window:
         
         #Menu bar
         menu = tk.Menu(window, tearoff=0)
-        menu.add_command(label='Refresh libraries', command = self.refresh)
+        menu.add_command(label='Refresh libraries', command = lambda: (self.getlibrary(s) for s in 'lr'))
         menu.add_command(label='Check for updates', command = lambda: thread(self.checkupdate))
         menu.add_command(label='Library Cleaner...', command = self.drivewin.show)
         menu.add_command(label='Toggle drive display', command = self.toggledrive)
@@ -517,10 +543,13 @@ class Window:
         
         self.game = False
         self.operation = False # If true, don't do other operations!
+        self.sources = {}
 
         
 
-        thread(self.refresh)
+        thread(self.getlibrary('l'))
+        thread(self.getlibrary('r'))
+        
         self.loop = window.mainloop
         
 
