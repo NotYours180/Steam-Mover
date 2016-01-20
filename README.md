@@ -16,16 +16,25 @@ Includes `Operation` class, for large-scale copy operations with status-keeping.
 
 To run, simply download both .py files into a folder and run `Steammover.py`. (The program is designed for Python 3.4 or newer, but may work on older versions.)
 
-SM should automatically detect your library paths – type a path in the respective entry to change it. (You don't have to be ultra-precise in the path!) Double-click a game to select it, and click one of the fancy buttons to do an action. Simplicity itself!
-
-A few buttons at the top let you check for updates or start Library Cleaner, for example. For Library Cleaner, just enter a path and hit enter. *Use Library Cleaner and find you can't play a game because you deleted an installer? Just go to tools > Verify cache to reïnstall them.*
+SM should automatically detect your library paths – type a path in the respective entry to change it. (You don't have to be ultra-precise in the path!) Double-click a game to select it, and click one of the fancy buttons to do an action. Simplicity itself! A few buttons at the top let you check for updates or start Library Cleaner, for example. For Library Cleaner, just enter a path and hit enter.
 
 ### Update log
 
-- **1.2 Major upgrade to Library Cleaner's capacities.**
+- **1.2: Increase library-loading efficiency**
+- 1.1.1:  Major upgrade to Library Cleaner's capacities.
 - 1.1: Add Library Cleaner in basic form.
 - 1.0: Release edition. Most features are still implemented.
 
+### FAQ
+
+**I cleaned my library, but a game won't run. What do I do now?**
+
+Most likely you haven't installed the redistributables the game needs. Just click the game in SM, and do Tools -> Verify cache to reïnstall the missing installers. Run the game, and when your drivers or whatnot are installed, you can clean the library again. (If this occurs *after* you've played it, [send me an email](mailto:yunruse@gmail.com), because that's no good!)
+
+**When I select a game, the bars at the top go slightly red and there's a question mark after the size. What do?**
+
+Steam's estimates for sizes are quick to get but sometimes a tad imprecise, so while SM automagically figures the sizes out itself, it uses the estimate with this indication (that it may not be entirely precise or not.) If this lingers, it's most likely you have a game with a very large amount of files – everything will function fine.
+
 ##### License
 
-Steam Mover is © Ami Ruse 2016. However, it operates on a lovely license. TL;DR: Copy, disassemble, <span title="Yes, that's a diaresis. I have weird standards, but goshdarnit I stick to 'em.">reässemble</span>, do whatever you want, as long as the license stays and that you don't try to sneakily sell it for monies. And enjoy! Don't forget to do that, too. :)
+Steam Mover is © Ami Ruse 2016. However, it operates on a lovely license. TL;DR? Copy, disassemble, reässemble, do whatever you want. And enjoy! Don't forget to do that, too. :)
