@@ -30,10 +30,11 @@ def checkupdate():
     else:
         return False, ''
 
-bgcolor = '#dddddd'
-usedcolor = '#000000'
-withcolor = '#448844'
-ohnecolor = '#ff4444'
+bgcolor =    '#dddddd'
+bgcolor_ =    '#eedddd'
+usedcolor =  '#000000'
+withcolor =  '#448844'
+ohnecolor =  '#ff4444'
 
 defaultlist = ["Library not found.",
         "Not sure where it is? Try providing a home path", "and we'll try to scan for a library."]
@@ -193,7 +194,23 @@ class Window:
             left *= 300
             right *= 300
             canvas.create_rectangle(left, 0, right, 20, fill=colour, width=0, tags='bar')
+
+    def updatesizes(self, side):
+        '''Given a library, calculates actual drive sizes.'''
+        lib = self.llib if 'l' in side else self.rlib
         
+        for i in lib['games']:
+            if not lib['games'][i]:
+                self.updatesize(side, i)
+
+    def updatesize(self, side, ID):
+        lib = self.llib if 'l' in side else self.rlib
+
+        path = os.path.join(lib['path'], 'common', self.sources[ID]['path'])
+        size = sm.dirsize(path)
+        
+        lib['games'][ID] = size                    
+    
     def getlibrary(self, side):
         '''Fetches library of given side ('l' or 'r')'''
         updateitem(self.info, 'No game selected. Double-click one from either library.')
@@ -203,14 +220,14 @@ class Window:
         
         self.title('Finding %s library' % side)
         path = sm.getpath(inp.get())
-        updateitem(inp, path)
         
         if path:
+            updateitem(inp, path)
             gamespath = os.path.join(path, 'steamapps')
             self.title('Scanning %s library' % side)
             capacity, used, free = shutil.disk_usage(path)
 
-            games = [] # List of library's game IDs.
+            games = {} # List of library's game IDs.
             
             for i in os.listdir(gamespath):
                 if not (i.endswith('.acf') and i.startswith('appmanifest_')):
@@ -223,16 +240,18 @@ class Window:
                         for line in f:
                             if 'installdir' in line:
                                 gamepath = re.findall('"installdir"\s+"(.+)"', line)[0]
-                                gamepath = os.path.join(gamespath, 'common', gamepath)
                             elif 'name' in line:
                                 name = re.findall('"name"\s+"(.+)"', line)[0]
+                            elif 'SizeOnDisk' in line:
+                                size = int(re.findall('"SizeOnDisk"\s+"(.+)"', line)[0])
                     
-                    self.sources[ID] = {'name': name, 'path': gamepath}
+                    self.sources[ID] = {'name': name, 'path': gamepath, 'size': size}
                     
-                games.append(ID)
+                games[ID] = False
                 
                 
-            lib = {'capacity': capacity, 'free': free, 'used': used, 'games': games}
+            lib = {'capacity': capacity, 'free': free, 'used': used, 'games': games,
+                   'path': gamespath}
 
             self.canvas(bar, capacity, [
                        (bgcolor, 0, capacity),(usedcolor, 0, used)])
@@ -242,6 +261,8 @@ class Window:
             names = [self.sources[ID]['name'] for ID in games]
             updateitem(lis, sorted(names,
                         key = lambda x: x.lower().replace('the ','').replace('a ','')))
+
+            
             
         else:
             lib = False
@@ -253,8 +274,10 @@ class Window:
         if side == 'right':
             self.rlib = lib
         else:
-             self.llib = lib
+            self.llib = lib
         
+        if lib:
+            sm.thread(self.updatesizes, side) #Set process off to calculate sizes        
         self.title() # Clear title
 
     def title(self, update=None, percent=None):
@@ -263,7 +286,6 @@ class Window:
             if percent:
                 self.operation = percent
                 title = '%.2f%% – %s' % (percent, update)
-                
                 
                 if (percent <= 0) or (percent >= 100) or \
                     (percent > self.lastpercent + 0.2):
@@ -342,10 +364,10 @@ class Window:
             else:
                 i.grid()
         self.showdrives = not self.showdrives
-            
+
         
     def select(self, side):
-        if side == 'l':
+        if 'l' in side:
             if not self.llib:
                 return False
             lib = self.llib
@@ -358,22 +380,17 @@ class Window:
             
         for g in lib['games']:
             if self.sources[g]['name'] == selectedgame:
-                game = self.sources[g]
-                ID = g
+                self.displaygame(side, g)
+                self.game = g
+                self.button('misc') #Allow single-library buttons
                 break
         else:
             updateitem(self.info, 'No game selected.')
-            return None
 
-        #Rest of block relies on game existing, naturally
-
-        self.button('misc') #Allow single-library buttons
-        self.game = game
-
+    def displaygame(self, side, ID):
         
-        size = sm.dirsize(game['path'])
-        
-        if side == 'l':
+        if 'l' in side:
+            lib    = self.llib
             dstlib = self.rlib
             srclab = self.llab
             dstlab = self.rlab
@@ -382,6 +399,7 @@ class Window:
             srcbar = self.lbar
             dstbar = self.rbar
         else:
+            lib    = self.rlib
             dstlib = self.llib
             srclab = self.rlab
             dstlab = self.llab
@@ -389,6 +407,19 @@ class Window:
             dstbar = self.lbar
             srcnam = 'right'
             dstnam = 'left'
+
+        game = self.sources[ID]
+        
+        if lib['games'][ID]: # The size in bytes, or FALSE if not provided
+            size = lib['games'][ID]
+            sizeestimate = False
+        else:
+            size = game['size'] # Steam's provided size; may be incorrect
+            sizeestimate = True
+            def sizeget():
+                self.updatesize(side, ID)
+                self.displaygame(side, ID)
+            thread(sizeget) # Immediately set off to get size
         
         name = game['name']
         if len(name) > 50:
@@ -408,19 +439,28 @@ class Window:
             self.dstlib = dstlib
             
             self.button() #Allow movement to other library
-
-            updateitem(self.info, '%s (%s side)\nSize: %s – ID: %s' % (
-                name, srcnam, sm.bytesize(size), ID))
+            if sizeestimate:
+                updateitem(self.info, '%s (%s side)\nSize: %s? – ID: %s' % (
+                    name, srcnam, sm.bytesize(size), ID))
+                bg = bgcolor_ #Paler color to indicate unsureness
+            else:
+                updateitem(self.info, '%s (%s side)\nSize: %s – ID: %s' % (
+                    name, srcnam, sm.bytesize(size), ID))
+                bg = bgcolor
 
             self.canvas(dstbar, dstlib['capacity'],[
-                        (bgcolor, 0, dstlib['capacity']), (usedcolor, 0, dstlib['used']),
+                        (bg, 0, dstlib['capacity']), (usedcolor, 0, dstlib['used']),
                         (withcolor, dstlib['used'], dstlib['used'] + size)
                         ])
         else:
             self.button('move', False) #Disallow movement buttons
-            
-            updateitem(self.info, '%s\nSize: %s – %s more needed on %s library' % (
-                name, sm.bytesize(size), sm.bytesize(needed), dstnam))
+
+            if sizeestimate:
+                updateitem(self.info, '%s\nSize: %s? – %s more needed on %s library' % (
+                    name, sm.bytesize(size), sm.bytesize(needed), dstnam))
+            else:
+                updateitem(self.info, '%s\nSize: %s – %s more needed on %s library' % (
+                    name, sm.bytesize(size), sm.bytesize(needed), dstnam))
             
             self.canvas(dstbar, dstlib['capacity'],[
                         (ohnecolor, 0, dstlib['capacity']),
@@ -501,7 +541,11 @@ class Window:
         
         #Menu bar
         menu = tk.Menu(window, tearoff=0)
-        menu.add_command(label='Refresh libraries', command = lambda: (self.getlibrary(s) for s in 'lr'))
+        def updateboth():
+            self.getlibrary('l')
+            self.getlibrary('r')
+        
+        menu.add_command(label='Refresh libraries', command = updateboth)
         menu.add_command(label='Check for updates', command = lambda: thread(self.checkupdate))
         menu.add_command(label='Library Cleaner...', command = self.drivewin.show)
         menu.add_command(label='Toggle drive display', command = self.toggledrive)
@@ -541,8 +585,8 @@ class Window:
         
         
         
-        self.game = False
-        self.operation = False # If true, don't do other operations!
+        self.srclib = self.game = self.dstlib = False #In case of preemptive checks
+        self.operation = False
         self.sources = {}
 
         
