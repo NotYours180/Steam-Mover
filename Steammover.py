@@ -105,7 +105,7 @@ class DriveClean:
             return None
         
         inp = self.path.get()
-        path = getpath(inp)
+        path = sm.getpath(inp)
         if not path:
             print("Can't find library at path '%s'" % inp)
             self.title("can't find library")
