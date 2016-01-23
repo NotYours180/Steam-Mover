@@ -573,15 +573,15 @@ class Window:
 
         #Tools menu popup
         popup = tk.Menu(window, tearoff=0)
-        popup.add_command(label='Details in Steam', command = lambda: web('steam://nav/games/details/%s' % self.game['id']))
-        popup.add_command(label='Verify cache', command = lambda: web('steam://validate/%s' % self.game['id']))
-        popup.add_command(label='Backup to file...', command = lambda: web('steam://backup/%s' % self.game['id']))
+        popup.add_command(label='Details in Steam', command = lambda: web('steam://nav/games/details/%s' % self.game))
+        popup.add_command(label='Verify cache', command = lambda: web('steam://validate/%s' % self.game))
+        popup.add_command(label='Backup to file...', command = lambda: web('steam://backup/%s' % self.game))
 
         visit = tk.Menu(popup, tearoff=0)
-        visit.add_command(label='SteamDB stats', command = lambda: web('https://steamdb.info/app/%s' % self.game['id']))
-        visit.add_command(label='Store page', command = lambda: web('steam://url/StoreAppPage/%s' % self.game['id']))
-        visit.add_command(label='Game hub', command = lambda: web('steam://url/GameHub/%s' % self.game['id']))
-        visit.add_command(label='News page', command = lambda: web('steam://appnews/%s' % self.game['id']))
+        visit.add_command(label='SteamDB stats', command = lambda: web('https://steamdb.info/app/%s' % self.game))
+        visit.add_command(label='Store page', command = lambda: web('steam://url/StoreAppPage/%s' % self.game))
+        visit.add_command(label='Game hub', command = lambda: web('steam://url/GameHub/%s' % self.game))
+        visit.add_command(label='News page', command = lambda: web('steam://appnews/%s' % self.game))
 
         popup.add_cascade(label='Visit...', menu=visit)
 
