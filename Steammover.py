@@ -32,7 +32,7 @@ def checkupdate():
         return False, ''
 
 bgcolor =    '#dddddd'
-bgcolor_ =    '#eedddd'
+bgcolor_ =   '#eedddd'
 usedcolor =  '#000000'
 withcolor =  '#448844'
 ohnecolor =  '#ff4444'
@@ -141,7 +141,7 @@ class DriveClean:
             print('%s saved from %s' % (sm.bytesize(deleted), path))
             self.title('%s saved' % sm.bytesize(deleted))
         else:
-            print('%s has no redundant files' % path)
+            print('No redundant files found in %s' % path)
             self.title('Already clean :D')
 
         self.doing = False
@@ -457,11 +457,11 @@ class Window:
             self.button('move', False) #Disallow movement buttons
 
             if sizeestimate:
-                updateitem(self.info, '%s\nSize: %s? – %s more needed on %s library' % (
-                    name, sm.bytesize(size), sm.bytesize(needed), dstnam))
+                updateitem(self.info, '%s\nSize: %s? – %s more needed – ID: %s' % (
+                    name, sm.bytesize(size), sm.bytesize(needed), ID))
             else:
-                updateitem(self.info, '%s\nSize: %s – %s more needed on %s library' % (
-                    name, sm.bytesize(size), sm.bytesize(needed), dstnam))
+                updateitem(self.info, '%s\nSize: %s – %s more needed – ID: %s' % (
+                    name, sm.bytesize(size), sm.bytesize(needed), ID))
             
             self.canvas(dstbar, dstlib['capacity'],[
                         (ohnecolor, 0, dstlib['capacity']),
