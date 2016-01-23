@@ -259,7 +259,7 @@ class Window:
             updateitem(lab, '%s (%s free)' %
                        (sm.bytesize(capacity), sm.bytesize(free)))
             
-            names = [self.sources[ID]['name'] for ID in games]
+            names = [self.names[ID] if ID in self.names else self.sources[ID]['name'] for ID in games]
             updateitem(lis, sorted(names,
                         key = lambda x: x.lower().replace('the ','').replace('a ','')))
 
@@ -331,8 +331,8 @@ class Window:
                        (bgcolor, 0, capacity),(usedcolor, 0, used)])
                 updateitem(lab, '%s (%s free)' %
                        (sm.bytesize(capacity), sm.bytesize(free)))
-            
-                names = [self.sources[ID]['name'] for ID in games]
+
+                names = [self.names[ID] if ID in self.names else self.sources[ID]['name'] for ID in games]
                 updateitem(lis, sorted(names,
                         key = lambda x: x.lower().replace('the ','').replace('a ','')))
             
@@ -381,12 +381,17 @@ class Window:
             
         for g in lib['games']:
             if self.sources[g]['name'] == selectedgame:
-                self.displaygame(side, g)
-                self.game = g
-                self.button('misc') #Allow single-library buttons
                 break
+            else:
+                if g in self.names:
+                    if self.names[g] == selectedgame:
+                        break
         else:
             updateitem(self.info, 'No game selected.')
+            return None
+        self.displaygame(side, g)
+        self.game = g
+        self.button('misc') #Allow single-library buttons
 
     def displaygame(self, side, ID):
         
@@ -421,8 +426,11 @@ class Window:
                 self.updatesize(side, ID)
                 self.displaygame(side, ID)
             thread(sizeget) # Immediately set off to get size
-        
-        name = game['name']
+
+        if ID in self.names:
+            name = self.names[ID]
+        else:
+            name = game['name']
         if len(name) > 50:
             name = name[:50] + '...' #Truncate name for display
         
@@ -468,6 +476,16 @@ class Window:
                         (usedcolor, 0, dstlib['used'])
                         ])
 
+    def getnames(self):
+        names = {}
+        with open('names') as f:
+            for line in f.readlines():
+                match = re.findall('(\d+)\t(.+)', line)
+                if match:
+                    ID, name = match[0]
+                    names[ID] = name
+
+        self.names = names
 
     def __init__(self):            
         self.window = window = tk.Tk()
@@ -590,8 +608,7 @@ class Window:
         self.operation = False
         self.sources = {}
 
-        
-
+        thread(self.getnames)
         thread(self.getlibrary('l'))
         thread(self.getlibrary('r'))
         
