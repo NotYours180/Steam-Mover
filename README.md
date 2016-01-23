@@ -35,6 +35,14 @@ Most likely you haven't installed the redistributables the game needs. Just clic
 
 Steam's estimates for sizes are quick to get but sometimes a tad imprecise, so while SM automagically figures the sizes out itself, it uses the estimate with this indication (that it may not be entirely precise or not.) If this lingers, it's most likely you have a game with a very large amount of files – everything will function fine.
 
+**I can't seem to find the game I'm looking for.**
+
+Steam Mover only does independently-launchable Steam games – no custom-linked ones, and no DLC (it's attached to its game). Other than that, try ensuring you're in the right drive and that the name isn't changed (Some names are neater for better organisation).
+
+**The *Copy* and *Move* buttons are grey, even though I've selected a game.**
+
+Check the filesize at the bottomright – you don't have enough storage space on the destination drive! (Try freeïng up some with Library Cleaner, or moving some other games over.)
+
 ##### License
 
 Steam Mover is © Ami Ruse 2016. However, it operates on a lovely license. TL;DR? Copy, disassemble, reässemble, do whatever you want. And enjoy! Don't forget to do that, too. :)
