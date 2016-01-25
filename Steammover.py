@@ -1,4 +1,5 @@
-version = 1.2 #Massively increase speed in larger libraries
+version = 1.21 #Major bugfix
+# Version 1.2: Massively increase speed in larger libraries
 # Version 1.11: Upgrade Library Cleaner's capabilities
 # Version 1.1: Add library-cleaning resources
 # Version 1.0: release

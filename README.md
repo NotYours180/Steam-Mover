@@ -20,7 +20,8 @@ SM should automatically detect your library paths – type a path in the respect
 
 ### Update log
 
-- **1.2: Increase library-loading efficiency**
+- **1.2.1: Major bugfix**
+- 1.2: Increase library-loading efficiency
 - 1.1.1:  Major upgrade to Library Cleaner's capacities.
 - 1.1: Add Library Cleaner in basic form.
 - 1.0: Release edition. Most features are still implemented.
