@@ -277,7 +277,7 @@ class Window:
     
     def delete(self, library, ID):
         '''Deletes a game from a library.'''
-        library['games'].remove(ID)
+        del library['games'][ID]
         path = os.path.join(library['path'], 'common', self.sources[ID]['path'])
         
         if os.path.exists(path):
@@ -606,10 +606,12 @@ class Window:
         btool = tk.Button(window, text='Tools...', command = self.tools, state='disabled')
         btool.grid(row=5, column=1, sticky='nwe')
         
-        bopen = tk.Button(window, text='Open folder', command = lambda: os.startfile(self.game['path']), state='disabled')
+        bopen = tk.Button(window, text='Open folder', command = lambda: os.startfile(
+            os.path.join(self.srclib['path'], 'common', self.sources[self.game]['path'])
+                          ), state='disabled')
         bopen.grid(row=5, column=2, sticky='nwe')
 
-        bplay = tk.Button(window, text='Play game', command = lambda: web('steam://run/%s' % self.game['id']), state='disabled')
+        bplay = tk.Button(window, text='Play game', command = lambda: web('steam://run/%s' % self.game), state='disabled')
         bplay.grid(row=5, column=3, sticky='nwe')
 
         self.drivewin = DriveClean(self)
