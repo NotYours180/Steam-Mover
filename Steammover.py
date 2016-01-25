@@ -170,48 +170,7 @@ class DriveClean:
 
 class Window:
     '''Steam Mover default window'''
-    def checkupdate(self):
-        '''Checks for update'''
-        self.title('Checking for updates...')
-        ver, log = checkupdate()
-        if ver:
-            self.title('Update found!')
-            if ask.askyesno('A new update is available!', 'Update %s is available (you are on %s.) Download? In this update:\n%s' % (ver, version, log)):
-                web('https://github.com/yunruse/Steam-Mover/')
-        else:
-            self.title('No updates found')
-        
-    def canvas(self, canvas, cap, col):
-        '''Update CANVAS with x proportional to CAP. COL is a list of (colour, x1, x2).'''
-        canvas.delete('bar')
-        if type(col[0])== str:
-            col = [col]
-
-        for colour, left, right in col:
-            if colour == 'none':
-                continue #Do not draw
-            left /= cap
-            right /= cap
-            left *= 300
-            right *= 300
-            canvas.create_rectangle(left, 0, right, 20, fill=colour, width=0, tags='bar')
-
-    def updatesizes(self, side):
-        '''Given a library, calculates actual drive sizes.'''
-        lib = self.llib if 'l' in side else self.rlib
-        
-        for i in lib['games']:
-            if not lib['games'][i]:
-                self.updatesize(side, i)
-
-    def updatesize(self, side, ID):
-        lib = self.llib if 'l' in side else self.rlib
-
-        path = os.path.join(lib['path'], 'common', self.sources[ID]['path'])
-        size = sm.dirsize(path)
-        
-        lib['games'][ID] = size                    
-    
+    # LIBRARY-BASED FUNCTIONS
     def getlibrary(self, side):
         '''Fetches library of given side ('l' or 'r')'''
         updateitem(self.info, 'No game selected. Double-click one from either library.')
@@ -259,7 +218,7 @@ class Window:
             updateitem(lab, '%s (%s free)' %
                        (sm.bytesize(capacity), sm.bytesize(free)))
             
-            names = [self.names[ID] if ID in self.names else self.sources[ID]['name'] for ID in games]
+            names = [self.name(ID) for ID in games]
             updateitem(lis, sorted(names,
                         key = lambda x: x.lower().replace('the ','').replace('a ','')))
 
@@ -281,6 +240,143 @@ class Window:
             sm.thread(self.updatesizes, side) #Set process off to calculate sizes        
         self.title() # Clear title
 
+    def updatesizes(self, side):
+        '''Given a library, calculates actual drive sizes.'''
+        lib = self.llib if 'l' in side else self.rlib
+        
+        for i in lib['games']:
+            if not lib['games'][i]:
+                self.updatesize(lib, i)
+
+    def updatesize(self, lib, ID):
+        path = os.path.join(lib['path'], 'common', self.sources[ID]['path'])
+        size = sm.dirsize(path)
+        
+        lib['games'][ID] = size
+
+    def name(self, ID):
+        '''Get name of game.'''
+        return self.names[ID] if ID in self.names else self.sources[ID]['name']
+
+    def getnames(self):
+        names = {}
+        with open('names') as f:
+            for line in f.readlines():
+                match = re.findall('(\d+)\t(.+)', line)
+                if match:
+                    ID, name = match[0]
+                    names[ID] = name
+
+        self.names = names
+    
+    # OPERATION FUNCTIONS
+    
+    def delete(self, library, ID):
+        '''Deletes a game from a library.'''
+        library['games'].remove(ID)
+        path = os.path.join(library['path'], 'common', self.sources[ID]['path'])
+        
+        if os.path.exists(path):
+            shutil.rmtree(path)
+        
+        acfpath = os.path.join(library['path'], 'appmanifest_%s.acf' % ID)
+        if os.path.exists(acfpath):
+            os.remove(acfpath)
+
+    def copy(self, source, destination, ID):
+        game = self.sources[ID]
+
+        srcpath = os.path.join(source['path'], 'common', game['path'])
+        acfpath = os.path.join(source['path'], 'appmanifest_%s.acf' % ID)
+        dstpath = os.path.join(destination['path'], 'common', game['path'])
+
+        if os.path.isdir(dstpath):
+            self.title('Deleting existent paths', 0)
+            shutil.rmtree(dstpath)
+
+        copyop = sm.Operation(srcpath, dstpath, lambda status:
+                              self.title(status, 100*(copyop.copied/copyop.size)))
+        copyop.start()
+        
+        self.title('Copying metadata file', 100)
+        shutil.copy2(acfpath, dstpath)
+
+        destination['games'][ID] = False
+        thread(self.updatesize, destination, ID)
+
+    def op(self, verb):
+        '''Do operation on game.'''
+        ID = self.game
+        game = self.sources[ID]
+        if self.operation == False and \
+           ask.askyesno('%s game?' % verb,'Are you sure you want to %s %s?' %
+                           (verb.lower(), self.name(ID)),
+                            icon='warning', default='no'):
+            self.operation = 0
+            self.lastpercent = 0
+            self.button('move', False)
+            for i in (self.ltype, self.rtype):
+                i.unbind('<Return>') #Disallow refreshing during operation
+
+            if verb != 'Delete':
+                self.copy(self.srclib, self.dstlib, self.game)
+
+            if verb == 'Move':
+                self.title('Deleting original files', 100)
+            
+            if verb != 'Copy':
+
+            for lib, lab, lis, bar in ((self.llib, self.llab, self.llis, self.lbar),
+                                       (self.llib, self.llab, self.llis, self.lbar)):
+                capacity, used, free = shutil.disk_usage(lib['path'])
+                lib['capacity'] = capacity
+                lib['used'] = used
+                lib['free'] = free
+                
+                self.canvas(bar, capacity, [
+                       (bgcolor, 0, capacity),(usedcolor, 0, used)])
+                updateitem(lab, '%s (%s free)' %
+                       (sm.bytesize(capacity), sm.bytesize(free)))
+
+                names = [self.name(ID) for ID in lib['games']]
+                updateitem(lis, sorted(names,
+                        key = lambda x: x.lower().replace('the ','').replace('a ','')))
+            
+            self.operation = False
+            self.button() #Reset movement
+            
+            self.ltype.bind('<Return>', lambda e: thread(self.getlibrary,'l'))
+            self.rtype.bind('<Return>', lambda e: thread(self.getlibrary,'r')) #Reällow refresh
+        
+
+    # UI FUNCTIONS
+    
+    def checkupdate(self):
+        '''Checks for update'''
+        self.title('Checking for updates...')
+        ver, log = checkupdate()
+        if ver:
+            self.title('Update found!')
+            if ask.askyesno('A new update is available!', 'Update %s is available (you are on %s.) Download? In this update:\n%s' % (ver, version, log)):
+                web('https://github.com/yunruse/Steam-Mover/')
+        else:
+            self.title('No updates found')
+        
+    def canvas(self, canvas, cap, col):
+        '''Update CANVAS with x proportional to CAP. COL is a list of (colour, x1, x2).'''
+        canvas.delete('bar')
+        if type(col[0])== str:
+            col = [col]
+
+        for colour, left, right in col:
+            if colour == 'none':
+                continue #Do not draw
+            left /= cap
+            right /= cap
+            left *= 300
+            right *= 300
+            canvas.create_rectangle(left, 0, right, 20, fill=colour, width=0, tags='bar')
+
     def title(self, update=None, percent=None):
         '''Update title from callback.'''
         if update:
@@ -298,48 +394,6 @@ class Window:
                 self.window.title('Steam Mover – ' + update)
         else:
             self.window.title('Steam Mover')
-             
-
-    def op(self, verb):
-        '''Do operation on game.'''
-        ID = self.game
-        game = self.sources[ID]
-        if self.operation == False and \
-           ask.askyesno('%s game?' % verb,'Are you sure you want to %s %s?' %
-                           (verb.lower(), self.sourcesgame['name']),
-                            icon='warning', default='no'):
-            self.operation = 0
-            self.lastpercent = 0
-            self.button('move', False)
-            for i in (self.ltype, self.rtype):
-                i.unbind('<Return>') #Disallow refreshing during operation
-
-            if verb != 'Delete':
-                sm.move(self.srclib, self.game, self.dstlib, callback=self.title)
-                self.dstlib.append(ID)
-
-            if verb == 'Move':
-                self.title('Deleting original files', 100)
-            
-            if verb != 'Copy':
-                sm.delete(self.srclib, game)
-                self.srclib.remove(ID)
-
-            for lib, lab, lis, bar in ((self.llib, self.llab, self.llis, self.lbar),
-                                       (self.llib, self.llab, self.llis, self.lbar)):
-                self.canvas(bar, capacity, [
-                       (bgcolor, 0, capacity),(usedcolor, 0, used)])
-                updateitem(lab, '%s (%s free)' %
-                       (sm.bytesize(capacity), sm.bytesize(free)))
-
-                names = [self.names[ID] if ID in self.names else self.sources[ID]['name'] for ID in games]
-                updateitem(lis, sorted(names,
-                        key = lambda x: x.lower().replace('the ','').replace('a ','')))
-            
-            self.operation = False
-            self.button() #Reset movement
-            for i in (self.ltype, self.rtype):
-                i.bind('<Return>', self.refresh) #Reällow refresh
         
     def button(self, category='move', state=True):
         '''Changes status for operation buttons.'''
@@ -368,6 +422,9 @@ class Window:
 
         
     def select(self, side):
+        if not (self.llib and self.rlib):
+            return False
+        
         if 'l' in side:
             if not self.llib:
                 return False
@@ -389,6 +446,7 @@ class Window:
         else:
             updateitem(self.info, 'No game selected.')
             return None
+        
         self.displaygame(side, g)
         self.game = g
         self.button('misc') #Allow single-library buttons
@@ -423,7 +481,7 @@ class Window:
             size = game['size'] # Steam's provided size; may be incorrect
             sizeestimate = True
             def sizeget():
-                self.updatesize(side, ID)
+                self.updatesize(lib, ID)
                 self.displaygame(side, ID)
             thread(sizeget) # Immediately set off to get size
 
@@ -433,9 +491,12 @@ class Window:
             name = game['name']
         if len(name) > 50:
             name = name[:50] + '...' #Truncate name for display
-        
-        needed = size - dstlib['free'] #Bytes needed on other drive
 
+        if dstlib:
+            needed = size - dstlib['free'] #Bytes needed on other drive
+        else:
+            needed = 1
+        
         #Update canvas for own game showing space taken
         self.canvas(srcbar, lib['capacity'],[
                    (bgcolor,0,lib['capacity']),(usedcolor, 0, lib['used']),
@@ -476,17 +537,6 @@ class Window:
                         (usedcolor, 0, dstlib['used'])
                         ])
 
-    def getnames(self):
-        names = {}
-        with open('names') as f:
-            for line in f.readlines():
-                match = re.findall('(\d+)\t(.+)', line)
-                if match:
-                    ID, name = match[0]
-                    names[ID] = name
-
-        self.names = names
-
     def __init__(self):            
         self.window = window = tk.Tk()
         window.resizable(0,1)
@@ -498,8 +548,8 @@ class Window:
         ltype = tk.Entry(window, width=50)
         rtype = tk.Entry(window, width=50)
 
-        ltype.bind('<Return>', lambda e: self.getlibrary('l'))
-        rtype.bind('<Return>', lambda e: self.getlibrary('r'))
+        ltype.bind('<Return>', lambda e: thread(self.getlibrary,'l'))
+        rtype.bind('<Return>', lambda e: thread(self.getlibrary,'r'))
         
         ltype.grid(row=0)
         rtype.grid(row=0,column=1, columnspan=3)
@@ -530,8 +580,8 @@ class Window:
         llis.grid(row=3, sticky='ns')
         rlis.grid(row=3, column=1, sticky='ns', columnspan=3)
 
-        llis.bind('<Double-Button-1>', lambda e: self.select('l'))
-        rlis.bind('<Double-Button-1>', lambda e: self.select('r'))
+        llis.bind('<Double-Button-1>', lambda e: thread(self.select, 'l'))
+        rlis.bind('<Double-Button-1>', lambda e: thread(self.select, 'r'))
 
         #Information label
         info = tk.Label(window, text='No game selected. Double-click one from either library.', width=42)
@@ -564,7 +614,7 @@ class Window:
             self.getlibrary('l')
             self.getlibrary('r')
         
-        menu.add_command(label='Refresh libraries', command = updateboth)
+        menu.add_command(label='Refresh libraries', command = lambda: thread(updateboth))
         menu.add_command(label='Check for updates', command = lambda: thread(self.checkupdate))
         menu.add_command(label='Library Cleaner...', command = self.drivewin.show)
         menu.add_command(label='Toggle drive display', command = self.toggledrive)
