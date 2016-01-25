@@ -314,8 +314,8 @@ class Window:
         '''Do operation on game.'''
         game = self.sources[self.game]
         if self.operation == False and \
-           ask.askyesno('%s game?' % verb,'Are you sure you want to %s %s?' %
-                           (verb, self.name(self.game)),
+           ask.askyesno('%s game?' % verb, 'Are you sure you want to %s %s?' %
+                           (verb.lower(), self.name(self.game)),
                             icon='warning', default='no'):
             self.operation = 0
             self.lastpercent = 0
@@ -323,13 +323,13 @@ class Window:
             for i in (self.ltype, self.rtype):
                 i.unbind('<Return>') #Disallow refreshing during operation
 
-            if verb != 'delete':
+            if verb != 'Delete':
                 self.copy(self.srclib, self.dstlib, self.game)
 
-            if verb == 'move':
+            if verb == 'Move':
                 self.title('Deleting original files', 100)
             
-            if verb != 'copy':
+            if verb != 'Copy':
                 self.delete(self.srclib, self.game)
 
             for lib, lab, lis, bar in ((self.llib, self.llab, self.llis, self.lbar),
@@ -594,13 +594,13 @@ class Window:
         info.grid(row=4, rowspan=2)
 
         #Buttons
-        bcopy = tk.Button(window, text='Copy', command = lambda: thread(self.op, 'copy'), state='disabled')
+        bcopy = tk.Button(window, text='Copy', command = lambda: thread(self.op, 'Copy'), state='disabled')
         bcopy.grid(row=4, column=1, sticky='nwe')
         
-        bmove = tk.Button(window, text='Move', command = lambda: thread(self.op, 'move'), state='disabled')
+        bmove = tk.Button(window, text='Move', command = lambda: thread(self.op, 'Move'), state='disabled')
         bmove.grid(row=4, column=2, sticky='nwe')
 
-        bdel = tk.Button(window, text='Delete', command = lambda: thread(self.op, 'delete'), state='disabled')
+        bdel = tk.Button(window, text='Delete', command = lambda: thread(self.op, 'Delete'), state='disabled')
         bdel.grid(row=4, column=3, sticky='nwe')
 
         btool = tk.Button(window, text='Tools...', command = self.tools, state='disabled')
@@ -660,7 +660,7 @@ class Window:
         
         
         
-        self.srclib = self.game = self.dstlib = False #In case of preemptive checks
+        self.srclib = self.game = self.dstlib = False #In case of preëmptive checks
         self.operation = False
         self.sources = {}
 
