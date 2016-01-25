@@ -196,17 +196,22 @@ class Window:
                     acfpath = os.path.join(gamespath, i)
                     with open(acfpath) as f:
                         f = f.readlines()
+                        downloaded = None
                         for line in f:
-                            if 'installdir' in line:
+                            if 'buildid' in line:
+                                # if it is "0", it is not downloaded
+                                downloaded = re.findall('"buildid"\s+"(.+)"', line)[0]
+                            elif 'installdir' in line:
                                 gamepath = re.findall('"installdir"\s+"(.+)"', line)[0]
                             elif 'name' in line:
                                 name = re.findall('"name"\s+"(.+)"', line)[0]
                             elif 'SizeOnDisk' in line:
                                 size = int(re.findall('"SizeOnDisk"\s+"(.+)"', line)[0])
-                    
+                            
+
+                if downloaded != '0':
                     self.sources[ID] = {'name': name, 'path': gamepath, 'size': size}
-                    
-                games[ID] = False
+                    games[ID] = False
                 
                 
             lib = {'capacity': capacity, 'free': free, 'used': used, 'games': games,
