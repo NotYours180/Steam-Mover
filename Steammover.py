@@ -278,7 +278,9 @@ class Window:
     
     def delete(self, library, ID):
         '''Deletes a game from a library.'''
-        del library['games'][ID]
+        if ID in library['games']:
+            del library['games'][ID]
+        
         path = os.path.join(library['path'], 'common', self.sources[ID]['path'])
         
         if os.path.exists(path):
@@ -287,6 +289,11 @@ class Window:
         acfpath = os.path.join(library['path'], 'appmanifest_%s.acf' % ID)
         if os.path.exists(acfpath):
             os.remove(acfpath)
+
+        dstlib = self.rlib if library = self.llib else self.llib
+
+        if not ID in dstlib['games']:
+            del sources[ID]
 
     def copy(self, source, destination, ID):
         game = self.sources[ID]
