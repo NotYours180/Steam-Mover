@@ -193,11 +193,11 @@ class Window:
                 if not (i.endswith('.acf') and i.startswith('appmanifest_')):
                     continue
                 ID = i[12:-4]
+                downloaded = None
                 if not ID in self.sources:
                     acfpath = os.path.join(gamespath, i)
                     with open(acfpath) as f:
                         f = f.readlines()
-                downloaded = None
                         for line in f:
                             if 'buildid' in line:
                                 # if it is "0", it is not downloaded
@@ -459,7 +459,8 @@ class Window:
         
         self.displaygame(side, g)
         self.game = g
-        self.button('misc') #Allow single-library buttons
+        if not self.operation:
+            self.button('misc') #Allow single-library buttons
 
     def displaygame(self, side, ID):
         
@@ -547,10 +548,15 @@ class Window:
                         (usedcolor, 0, dstlib['used'])
                         ])
 
+    def close(self):
+        if self.operation:
+            self.title('Cannot close in operation!', log=0)
+
     def __init__(self):            
         self.window = window = tk.Tk()
         window.resizable(0,1)
         window.minsize(600,300)
+        window.protocol('WM_DELETE_WINDOW', self.close)
 
         window.grid_rowconfigure(3, weight=1)
 
