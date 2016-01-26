@@ -197,7 +197,7 @@ class Window:
                     acfpath = os.path.join(gamespath, i)
                     with open(acfpath) as f:
                         f = f.readlines()
-                        downloaded = None
+                downloaded = None
                         for line in f:
                             if 'buildid' in line:
                                 # if it is "0", it is not downloaded
@@ -209,11 +209,11 @@ class Window:
                             elif 'SizeOnDisk' in line:
                                 size = int(re.findall('"SizeOnDisk"\s+"(.+)"', line)[0])
                             
-
-                if downloaded != '0':
-                    self.sources[ID] = {'name': name, 'path': gamepath, 'size': size}
+                    if downloaded != '0':
+                        self.sources[ID] = {'name': name, 'path': gamepath, 'size': size}
+                        games[ID] = False
+                else:
                     games[ID] = False
-                
                 
             lib = {'capacity': capacity, 'free': free, 'used': used, 'games': games,
                    'path': gamespath}
@@ -303,10 +303,9 @@ class Window:
         copyop.start()
 
         acfpath = os.path.join(source['path'], 'appmanifest_%s.acf' % ID)
-        acfdstpath = os.path.join(destination['path'], 'common')
         
         self.title('Copying metadata file', 100)
-        shutil.copy2(acfpath, acfdstpath)
+        shutil.copy2(acfpath, destination['path'])
 
         destination['games'][ID] = False
         thread(self.updatesize, destination, ID)
@@ -332,6 +331,8 @@ class Window:
             
             if verb != 'Copy':
                 self.delete(self.srclib, self.game)
+
+            self.title()
 
             for lib, lab, lis, bar in ((self.llib, self.llab, self.llis, self.lbar),
                                        (self.llib, self.llab, self.llis, self.lbar)):
@@ -384,7 +385,7 @@ class Window:
             right *= 300
             canvas.create_rectangle(left, 0, right, 20, fill=colour, width=0, tags='bar')
 
-    def title(self, update=None, percent=None):
+    def title(self, update=None, percent=None, log=print):
         '''Update title from callback.'''
         if update:
             if percent:
@@ -395,9 +396,11 @@ class Window:
                     (percent > self.lastpercent + 0.2):
                     self.lastpercent = percent
                     self.window.title('Steam Mover – ' + title)
-                    print(title.replace('Copying file ','').replace(' –',''))
+                    if callable(log):
+                        log(title.replace('Copying file ','').replace(' –',''))
             else:
-                print(update)
+                if callable(log):
+                    log(update)
                 self.window.title('Steam Mover – ' + update)
         else:
             self.window.title('Steam Mover')
