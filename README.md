@@ -1,5 +1,5 @@
-﻿## Steam Mover *v1.2*
-*Steam library manager for Python 3*
+﻿## Steam Mover *v1.2.1*
+*Steam library manager for Python 3.3—3.6*
 
 Manage games from your Steam libraries – backup games, move them from your HDD to your SSD, visualise which game takes up the most space, clean up pesky DirectX redistributables, et cetera. Featuring:
 
@@ -8,7 +8,7 @@ Manage games from your Steam libraries – backup games, move them from your HDD
 - **Library finder**: automagically detects your Steam libraries, finds a library given vague paths, or searches drives for libraries
 - **Library Cleaner**: Finds and purges sneaky DirectX installers that every game seems to have an identical but useless copy of. *Saves gigabytes of storage!*
 
-![](http://i.imgur.com/7bY2TNs.png)
+![A screenshot of Steam Mover in action, with the Library Mover window also nearby.](http://i.imgur.com/7bY2TNs.png)
 
 Includes `Operation` class, for large-scale copy operations with status-keeping.
 
@@ -20,7 +20,7 @@ SM should automatically detect your library paths – type a path in the respect
 
 ### Update log
 
-- **1.2.1: Major bugfix**
+- **1.2.1: Major bugfixes**
 - 1.2: Increase library-loading efficiency
 - 1.1.1:  Major upgrade to Library Cleaner's capacities.
 - 1.1: Add Library Cleaner in basic form.
@@ -30,7 +30,7 @@ SM should automatically detect your library paths – type a path in the respect
 
 **I cleaned my library, but a game won't run. What do I do now?**
 
-Most likely you haven't installed the redistributables the game needs. Just click the game in SM, and do Tools -> Verify cache to reïnstall the missing installers. Run the game, and when your drivers or whatnot are installed, you can clean the library again. (If this occurs *after* you've played it, [send me an email](mailto:yunruse@gmail.com), because that's no good!)
+Most likely you haven't installed the redistributables the game needs. Just click the game in SM, and do Tools→Verify cache to reïnstall the missing installers. Run the game, and when your drivers or whatnot are installed, you can clean the library again. (If this occurs *after* you've played it, [send me an email](mail), because that's no good!)
 
 **When I select a game, the bars at the top go slightly red and there's a question mark after the size. What do?**
 
@@ -46,4 +46,8 @@ Check the filesize at the bottomright – you don't have enough storage space on
 
 ##### License
 
-Steam Mover is © Ami Ruse 2016. However, it operates on a lovely license. TL;DR? Copy, disassemble, reässemble, do whatever you want. And enjoy! Don't forget to do that, too. :)
+Steam Mover is © [Ami Ruse] 2016. However, it operates on a lovely [license]. TL;DR? Copy, disassemble, reässemble, do whatever you want. And enjoy! Don't forget to do that, too. :)
+
+[email]: mailto://yunruse@gmail.com (I'll respond to anything ya send me :D)
+[ami ruse]: http://digitalducttape.wordpress.com (Go read my blag, kupo!)
+[license]: https://github.com/yunruse/Steam-Mover/blob/master/LICENSE.txt
