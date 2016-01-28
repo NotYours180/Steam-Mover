@@ -17,19 +17,24 @@ def acfgetreg(string, key):
         return False
 
 def dirsize(path):
-    '''Gets size of given directory.'''
+    '''Gets bytes used by directory and amount of files.'''
     if os.path.isfile(path):
         return os.path.getsize(path)
     
-    total = 0
+    totalsize = 0
+    totalcount = 0
     for dirpath, dirs, files in os.walk(path):
         for file in files:
             file = os.path.join(dirpath, file)
             try:
-                total += os.path.getsize(file)
+                size = os.path.getsize(file)
             except OSError:
-                pass
-    return total
+                continue
+            
+            totalcount += 1
+            totalsize += os.path.getsize(file)
+    
+    return totalsize, totalcount
 
 def bytesize(num, binary=True):
     '''Given a number of bytes, human-formats as binary(kibi, mebi; *1024) or non-binary (kilo, mega; *1000) up to yotta/yobibytes.'''
@@ -78,8 +83,12 @@ class Operation:
         size = os.path.getsize(src) #Size of file to be copied
 
         self._status('Copying file %s' % relsrc)
-        shutil.copy2(src, dst, follow_symlinks=False)
-        self.copied += size
+        try:
+            shutil.copy2(src, dst, follow_symlinks=False)
+        except FileNotFoundError:
+            return None
+        self.copysize += size
+        self.copycount += 1
     
     def start(self):
         '''Starts operation.'''
@@ -87,9 +96,7 @@ class Operation:
         
         for dirpath, dirs, files in self.list:
             for d in dirs:
-                d = os.path.join(dirpath, d) #Make absolute
-                relpath = os.path.relpath(d, self.src) #Get relative to top source
-                newpath = os.path.join(self.dst, relpath) #Get new destination folder
+                newpath = os.path.join(self.dst, d) #Get new destination folder
                 
                 if not os.path.exists(newpath):
                     os.makedirs(newpath) #Make directory if nonexistent
@@ -123,3 +130,5 @@ class Operation:
 
         self.list = os.walk(self.src) #List of files
         
+        self.size, self.count = dirsize(src) #Bytes to copy
+        self.copysize = self.copycount = 0 # Bytes copied

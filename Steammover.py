@@ -42,11 +42,39 @@ defaultlist = ["Library not found.",
         "Not sure where it is? Try providing a home path", "and we'll try to scan for a library."]
 
 redundantfolders = ['dotnet', '_commonredist', '.*directx.*', 'dotnetfx' 'redist', 'dependencies',
-                     'directx_redist', 'vcredist.*', 'installers', 'dxmin']
+                     'directx_redist', 'vcredist.*', 'installers', 'dxmin', 'payload*']
 
 redundantfiles = ['.*redist\.msi', '.*dotNet.*\.exe']
+    
+def removeredists(path):
+    deletedsize = deletedcount = 0
+    
+    for paths, folders, files in os.walk(path):
+        for f in folders:
+            for i in redundantfolders:
+                match = re.findall(i, f.lower())
+                if match:
+                    f = os.path.join(paths, match[0])
+                    if os.path.isdir(f):
+                        
+                        size, count = dirsize(path)
+                        deletedsize += size
+                        deletedcount += count
+                        
+                        shutil.rmtree(f)
+        
+        for f in files:
+            for i in redundantfiles:
+                match = re.findall(i, f.lower())
+                if match:
+                    f = os.path.join(paths, match[0])
+                    if os.path.isfile(f):
+                        deletedfiles += 1
+                        deletedsizes += os.path.getsize(f)
+                        os.remove(f)
 
-
+    
+    return deletedsize, deletedcount
 
 for i in ('C:/Program Files (x86)/Steam/','C:/Program Files/Steam/',
           '~/Library/Application Support/Steam/', '~/.local/share/Steam'):
@@ -99,7 +127,6 @@ class DriveClean:
         self.button.grid(row=2, sticky='we')
 
     def clean(self, event=None):
-        self.title() #Clear title
         inp = self.path.get()
         path = sm.getpath(inp)
         if not path:
@@ -107,49 +134,22 @@ class DriveClean:
             self.title("can't find library")
             return None
 
-        self.button.config(state='disabled')
+        self.button.config(text='Cleaning...', state='disabled')
         
         path = os.path.join(path, 'steamapps', 'common')
-        size = sm.dirsize(path)
-        
-        for paths, folders, files in os.walk(path):
-            for f in folders:
-                for i in redundantfolders:
-                    match = re.findall(i, f.lower())
-                    if match:
-                        f = os.path.join(paths, match[0])
-                        if os.path.isdir(f):
-                            self.title(os.path.relpath(f, path))
-                            shutil.rmtree(f)
-            for f in files:
-                for i in redundantfiles:
-                    match = re.findall(i, f.lower())
-                    if match:
-                        f = os.path.join(paths, match[0])
-                        if os.path.isfile(f):
-                            self.title(os.path.relpath(f, path))
-                            os.remove(f)
 
-        
-        deleted = abs(size - sm.dirsize(path))        
-        if deleted:
-            print('%s saved from %s' % (sm.bytesize(deleted), path))
-            self.title('%s saved' % sm.bytesize(deleted))
+        deletedsize, deletedcount = sm.removeredists(path)
+              
+        if deletedcount:
+            update = '%s (%s files) saved' % (sm.bytesize(deletedsize), deletedcount)
+            print(path + ': ' + update)
+            self.button.config(state='active', text=update)
         else:
-            print('No redundant files found in %s' % path)
-            self.title('Already clean :D')
-
-        self.button.config(state='active')
-        
-
-    def title(self, text=None):
-        if text:
-            self.window.title('Library Cleaner – %s' % text)
-        else:
-            self.window.title('Library Cleaner')
+            print('No redundant files found in ' + path)
+            self.button.config(state='active', text='Already clean :D')
 
     def show(self):
-        self.title()
+        self.window.title('Library Cleaner')
         self.window.deiconify()
         self.window.lift()
         updateitem(self.path, self.main.ltype.get())
@@ -219,9 +219,7 @@ class Window:
             names = [self.name(ID) for ID in games]
             updateitem(lis, sorted(names,
                         key = lambda x: x.lower().replace('the ','').replace('a ','')))
-
-            
-            
+        
         else:
             lib = False
             updateitem(lab, 'No drive found')
@@ -248,7 +246,7 @@ class Window:
 
     def updatesize(self, lib, ID):
         path = os.path.join(lib['path'], 'common', self.sources[ID]['path'])
-        size = sm.dirsize(path)
+        size = sm.dirsize(path)[0]
         
         lib['games'][ID] = size
 
@@ -299,7 +297,7 @@ class Window:
             shutil.rmtree(dstpath)
 
         copyop = sm.Operation(srcpath, dstpath, lambda status:
-                              self.title(status, 100*(copyop.copied/copyop.size)))
+                              self.title(status, 100*(copyop.copysize/copyop.size)))
         copyop.start()
 
         acfpath = os.path.join(source['path'], 'appmanifest_%s.acf' % ID)
