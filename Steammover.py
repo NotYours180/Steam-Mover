@@ -290,7 +290,7 @@ class Window:
         if os.path.exists(acfpath):
             os.remove(acfpath)
 
-        dstlib = self.rlib if library = self.llib else self.llib
+        dstlib = self.rlib if library == self.llib else self.llib
 
         if not ID in dstlib['games']:
             del sources[ID]
