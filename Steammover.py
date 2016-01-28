@@ -32,8 +32,8 @@ def checkupdate():
     else:
         return False, ''
 
-bgcolor =    '#dddddd'
-bgcolor_ =   '#eedddd'
+bgcolor   =  '#dddddd'
+bgcolor_  =  '#eedddd'
 usedcolor =  '#000000'
 withcolor =  '#448844'
 ohnecolor =  '#ff4444'
@@ -98,13 +98,8 @@ class DriveClean:
         self.button = tk.Button(window, text='Clean library', command=lambda: thread(self.clean))
         self.button.grid(row=2, sticky='we')
 
-        self.doing = False #No operation in progress
-
     def clean(self, event=None):
         self.title() #Clear title
-        if self.doing:
-            return None
-        
         inp = self.path.get()
         path = sm.getpath(inp)
         if not path:
@@ -113,7 +108,6 @@ class DriveClean:
             return None
 
         self.button.config(state='disabled')
-        self.doing = True
         
         path = os.path.join(path, 'steamapps', 'common')
         size = sm.dirsize(path)
@@ -145,7 +139,6 @@ class DriveClean:
             print('No redundant files found in %s' % path)
             self.title('Already clean :D')
 
-        self.doing = False
         self.button.config(state='active')
         
 
@@ -466,8 +459,7 @@ class Window:
         
         self.displaygame(side, g)
         self.game = g
-        if not self.operation:
-            self.button('misc') #Allow single-library buttons
+        self.button('misc') #Allow single-library buttons
 
     def displaygame(self, side, ID):
         
@@ -526,7 +518,8 @@ class Window:
             self.srclib = lib
             self.dstlib = dstlib
             
-            self.button() #Allow movement to other library
+            if not self.operation:
+                self.button() #Allow movement to other library
             if sizeestimate:
                 updateitem(self.info, '%s (%s side)\nSize: %s? – ID: %s' % (
                     name, srcnam, sm.bytesize(size), ID))
