@@ -72,7 +72,7 @@ def getpath(path):
 class Operation:
     '''Folder copying operation w/ status. Does not attempt to see if free space is available.'''
 
-    def _copy(self, src, dst):
+    def copy(self, src, dst):
         '''Copies SRC to DST, updates internal stats.'''
         relsrc = os.path.relpath(src, self.src) # Relative source path for display
         size = os.path.getsize(src) #Size of file to be copied
@@ -99,7 +99,7 @@ class Operation:
             
             for file in files:
                 file = os.path.realpath(os.path.join(dirpath, file))
-                self._copy(file, newpath)
+                self.copy(file, newpath)
 
     def _status(self, status):
         '''Runs callback with status and attempts to stop divison by zero errors.'''
@@ -123,44 +123,3 @@ class Operation:
 
         self.list = os.walk(self.src) #List of files
         
-        self.size = dirsize(src) #Bytes to copy
-        self.copied = 0 # Bytes copied
-
-
-def move(sender, game, library, callback=None):
-    '''Moves game with ID `game` from library `sender` to `library`.
-    If callback is set, every operation done does callback(statusmsg, percentdone)'''
-
-    srcpath = os.path.join(sender['path'], game['path'])
-    gamepath = os.path.basename(game['path']) # Name of folder
-    dstpath = os.path.join(library['path'], 'steamapps', 'common', gamepath)
-
-    if os.path.isdir(dstpath):
-        callback('Deleting existent paths', 0)
-        shutil.rmtree(dstpath)
-
-    copyop = Operation(srcpath, dstpath, library['path'])
-    if callable(callback):
-        copyop.callback = lambda status: callback(status, 100*(copyop.copied/copyop.size))
-    copyop.start()
-
-    if callable(callback):
-        callback('Copying metadata file', 100)
-    shutil.copy2(game['acfpath'], os.path.join(library['path'], 'steamapps')) # Copy ACF file
-
-    if delete:
-        callback('Deleting original files', 100)
-        delete(game)
-
-
-def delete(library, game):
-    '''Deletes GAME from LIBRARY. No callback.'''
-
-    path = os.path.join(library['path'], game['path'])
-    if os.path.exists(path):
-        shutil.rmtree(path)
-        
-    acfpath = os.path.join(path, os.pardir, os.pardir, 'appmanifest_%s.acf' % game['id'])
-    if os.path.exists(acfpath):
-        os.remove(acfpath)
-    
