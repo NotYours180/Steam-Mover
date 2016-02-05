@@ -138,7 +138,7 @@ class DriveClean:
         
         path = os.path.join(path, 'steamapps', 'common')
 
-        deletedsize, deletedcount = sm.removeredists(path)
+        deletedsize, deletedcount = removeredists(path)
               
         if deletedcount:
             update = '%s (%s files) saved' % (sm.bytesize(deletedsize), deletedcount)
