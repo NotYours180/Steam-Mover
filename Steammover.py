@@ -549,6 +549,8 @@ class Window:
     def close(self):
         if self.operation:
             self.title('Cannot close in operation!', log=0)
+        else:
+            self.window.destroy()
 
     def __init__(self):            
         self.window = window = tk.Tk()
