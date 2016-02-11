@@ -131,7 +131,7 @@ class DriveClean:
         path = sm.getpath(inp)
         if not path:
             print("Can't find library at path '%s'" % inp)
-            self.title("can't find library")
+            self.button.config(state='active', text='Library not find')
             return None
 
         self.button.config(text='Cleaning...', state='disabled')
